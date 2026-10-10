@@ -1,9 +1,4 @@
-// Small DOM / formatting helpers shared by the admin views.
-import { toast } from './components/toast.js';
-
-export const $ = s => document.querySelector(s);
-export const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-export const O = location.origin;
+// Small helpers shared by the pages.
 export const rid = () => Math.random().toString(36).slice(2, 10);
 
 export const ago = t => {
@@ -12,21 +7,16 @@ export const ago = t => {
   return m < 1 ? 'just now' : m < 60 ? Math.round(m) + 'm ago' : m < 1440 ? Math.round(m / 60) + 'h ago' : Math.round(m / 1440) + 'd ago';
 };
 
-// Sets a value on a nested object using a dotted path ("blocks.0.items.2.title").
-export const setp = (o, p, v) => { const k = p.split('.'), l = k.pop(); k.reduce((x, y) => x[y], o)[l] = v; };
-export const getp = (o, p) => p.split('.').reduce((x, y) => x[y], o);
+// Read / write a nested value by dotted path ("blocks.0.items.2.title"). Missing objects are created.
+export const getp = (o, p) => p.split('.').reduce((x, y) => (x == null ? undefined : x[y]), o);
+export function setp(o, p, v) {
+  const k = p.split('.'), last = k.pop();
+  let c = o;
+  for (const x of k) { if (c[x] == null) c[x] = {}; c = c[x]; }
+  c[last] = v;
+}
 
 export const slugify = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
-
-export async function copy(text, btn) {
-  try {
-    await navigator.clipboard.writeText(text);
-    if (btn) { const o = btn.innerHTML; btn.textContent = 'Copied ✓'; setTimeout(() => (btn.innerHTML = o), 1400); }
-    else toast('Copied to clipboard');
-  } catch {
-    toast('Could not copy automatically — ' + text, { error: true, ms: 5000 });
-  }
-}
 
 // Reads an image file, downsizes it to `max` px on its longest side and returns a data: URL.
 export const toData = (file, max, type) => new Promise((res, rej) => {

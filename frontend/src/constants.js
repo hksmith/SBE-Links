@@ -26,8 +26,6 @@ Bold:[['Volt','#0b0b0b','#c8ff00','#c8ff00','#0b0b0b','#c8ff00','#1a1a1a','#c8ff
  ['Brutal','#facc15','#111111','#ffffff','#111111','#111111','#ffffff','#111111',{radius:0,disp:'Space Grotesk',body:'Space Mono',shadow:true}],
  ['Neon','#0a0a14','#ff3cac','#ff3cac','#0a0a14','#784ba0','#15152a','#ffffff',{radius:4,disp:'Orbitron',body:'Space Grotesk'}],
  ['Mono','#ffffff','#000000','#ffffff','#000000','#000000','#f3f3f3','#000000',{radius:0,disp:'Space Mono',body:'Space Mono'}]]};
-// Slider used in the editor; `p` is the data path it edits.
-export const SL=(l,p,mn,mx,v,u)=>`<div style="margin:8px 0"><b style="font-weight:600">${l}</b><div class="row"><input type="range" min="${mn}" max="${mx}" data-p="${p}" value="${v}"><span class="tag" style="min-width:66px;text-align:center"><output>${v}</output>${u}</span></div></div>`;
 export const NAME={links:'Links – Classic Layout',social:'Social chips',images:'Images',text:'Text',video:'Video',contact:'Save contact (vCard)',divider:'Divider'},ICON={links:'link',social:'people',images:'image',text:'text',video:'video',contact:'contact',divider:'divider'};
 export const CAT=[['links','Buttons for WhatsApp, phone, website, anything','Quick add'],['contact','Button that opens your own vCard link','Quick add'],['images','Photos, banners, company logos','Quick add'],['video','Embed a YouTube video','Quick add'],['text','A paragraph or note','Layout'],['social','Small round social chips','Layout'],['divider','A thin separator line','Layout']];
 export const NEWB={links:()=>({items:[{id:rid(),ico:'link',title:'',sub:'',url:'',off:false}]}),social:()=>({items:[]}),images:()=>({imgs:[]}),text:()=>({text:''}),video:()=>({url:''}),contact:()=>({label:'Save My Contact',url:''}),divider:()=>({})};

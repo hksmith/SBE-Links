@@ -17,6 +17,8 @@ REM or paste a MongoDB Atlas connection string here (keep the quotes).
 set "MONGODB_URI=mongodb://127.0.0.1:27017/sbpo-link-tree"
 REM ----------------------------------
 set "PORT=3000"
+REM The React frontend (npm run dev in the frontend folder) runs on this address:
+set "CLIENT_ORIGIN=http://localhost:5173"
 
 if not exist "server\node_modules\mongodb" (
   echo Installing server packages, this only happens once...
@@ -30,9 +32,10 @@ if not exist "server\node_modules\mongodb" (
 
 echo.
 echo  SBPO Link Tree is starting...
-echo  Admin login:  http://localhost:%PORT%/admin   (user: %ADMIN_USER%  password: %ADMIN_PASSWORD%)
+echo  Server:  http://localhost:%PORT%   (admin user: %ADMIN_USER%  password: %ADMIN_PASSWORD%)
+echo  Admin app: open a second window in the "frontend" folder and run  npm install  then  npm run dev
+echo              it opens at http://localhost:5173
 echo  Keep this window open. Press Ctrl+C to stop.
 echo.
-start "" http://localhost:%PORT%/admin
 node server\src\index.js
 pause

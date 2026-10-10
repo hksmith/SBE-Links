@@ -4,7 +4,6 @@ const config = require('../config');
 const settings = require('../repositories/settings');
 
 let secret = null;
-const WEEK = 7 * 864e5;
 const tries = {};
 
 async function init() {
@@ -27,20 +26,25 @@ function clientIp(req) {
   return (config.trustProxy && String(req.headers['x-forwarded-for'] || '').split(',')[0].trim()) || req.socket.remoteAddress;
 }
 
+// Session cookie. SameSite=None (frontend on another site) requires Secure, so it is forced on.
+function cookie(req, value, maxAge) {
+  const ss = config.cookieSameSite, https = req.headers['x-forwarded-proto'] === 'https';
+  const secure = ss === 'none' || config.cookieSecure === true || (config.cookieSecure === undefined && https);
+  return `sid=${value}; HttpOnly; SameSite=${ss[0].toUpperCase() + ss.slice(1)}; Path=/; Max-Age=${maxAge}${secure ? '; Secure' : ''}`;
+}
+const logout = req => cookie(req, '', 0);
+
 // Returns { ok, cookie } or { error: 'rate' | 'bad' }
 function login(req, user, pass) {
   const ip = clientIp(req), now = Date.now();
   tries[ip] = (tries[ip] || []).filter(t => now - t < 6e5);
   if (tries[ip].length >= 8) return { error: 'rate' };
   if (same(user, config.adminUser) && same(pass, config.adminPassword)) {
-    const exp = String(now + WEEK);
-    const secure = req.headers['x-forwarded-proto'] === 'https' ? '; Secure' : '';
-    return { ok: true, cookie: `sid=${exp}.${sign(exp)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${WEEK / 1000}${secure}` };
+    const exp = String(now + config.sessionDays * 864e5);
+    return { ok: true, cookie: cookie(req, `${exp}.${sign(exp)}`, config.sessionDays * 864e2) };
   }
   tries[ip].push(now);
   return { error: 'bad' };
 }
 
-const logoutCookie = 'sid=; Path=/; Max-Age=0';
-
-module.exports = { init, isLoggedIn, login, logoutCookie };
+module.exports = { init, isLoggedIn, login, logout };

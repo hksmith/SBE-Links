@@ -29,24 +29,83 @@ before(async () => {
 });
 after(() => server.close());
 
-test('root redirects to /admin', async () => {
+test('root answers with a small JSON status (the UI is the separate frontend)', async () => {
   const r = await req('GET', '/');
-  assert.strictEqual(r.status, 302);
-  assert.strictEqual(r.headers.get('location'), '/admin');
+  assert.strictEqual(r.status, 200);
+  assert.deepStrictEqual(await r.json(), { name: 'SBPO Link Tree API', status: 'ok' });
 });
 
-test('admin shows login page until signed in, then the app', async () => {
-  let r = await req('GET', '/admin');
-  assert.match(await r.text(), /id="login-form"/);
+test('health check for the host', async () => {
+  const r = await req('GET', '/health');
+  assert.strictEqual(r.status, 200);
+  assert.deepStrictEqual(await r.json(), { ok: true });
+});
+
+test('the API needs a session; the old /admin pages are gone', async () => {
   assert.strictEqual((await req('GET', '/api/accounts')).status, 401);
   assert.strictEqual((await req('POST', '/login', { u: 'admin', p: 'nope' })).status, 401);
-  r = await req('POST', '/login', { u: 'admin', p: 'test-pass' });
+  let r = await req('POST', '/login', { u: 'admin', p: 'test-pass' });
   assert.strictEqual(r.status, 200);
   cookie = r.headers.get('set-cookie').split(';')[0];
-  r = await req('GET', '/admin');
-  assert.match(await r.text(), /id="app"/);
-  assert.strictEqual((await req('GET', '/admin/js/main.js')).status, 200);
-  assert.strictEqual((await req('GET', '/admin/../server/src/config.js')).status, 404);
+  assert.strictEqual((await req('GET', '/api/accounts')).status, 200);
+  assert.strictEqual((await req('GET', '/admin')).status, 404);
+  assert.strictEqual((await req('GET', '/admin/js/main.js')).status, 404);
+});
+
+test('CORS: only CLIENT_ORIGIN may call the API with cookies; other sites cannot write', async () => {
+  const config = require('../src/config');
+  const app = 'https://app.example.com', evil = 'https://evil.example.net';
+  config.clientOrigins.push(app);
+  try {
+    // preflight from the allowed origin
+    let r = await req('OPTIONS', '/api/accounts', undefined, { Origin: app, 'Access-Control-Request-Method': 'PUT' });
+    assert.strictEqual(r.status, 204);
+    assert.strictEqual(r.headers.get('access-control-allow-origin'), app);
+    assert.strictEqual(r.headers.get('access-control-allow-credentials'), 'true');
+    assert.match(r.headers.get('access-control-allow-methods'), /PUT/);
+    // preflight from anywhere else gets no permission
+    r = await req('OPTIONS', '/api/accounts', undefined, { Origin: evil });
+    assert.strictEqual(r.headers.get('access-control-allow-origin'), null);
+    // allowed origin can read and write; the response carries the CORS headers
+    r = await req('GET', '/api/accounts', undefined, { Origin: app });
+    assert.strictEqual(r.status, 200);
+    assert.strictEqual(r.headers.get('access-control-allow-origin'), app);
+    r = await req('POST', '/api/accounts', { name: 'Cors Person' }, { Origin: app });
+    assert.strictEqual(r.status, 201);
+    const created = await r.json();
+    // a write from another origin is refused even with a valid session cookie (CSRF)
+    r = await req('POST', '/api/accounts', { name: 'Evil' }, { Origin: evil });
+    assert.strictEqual(r.status, 403);
+    r = await req('DELETE', '/api/accounts/' + created.id, undefined, { Origin: evil });
+    assert.strictEqual(r.status, 403);
+    r = await req('POST', '/logout', undefined, { Origin: evil });
+    assert.strictEqual(r.status, 403);
+    // no Origin header (curl, server to server) is not affected; reads from other origins are not blocked but get no CORS grant
+    assert.strictEqual((await req('DELETE', '/api/accounts/' + created.id)).status, 200);
+    r = await req('GET', '/api/accounts', undefined, { Origin: evil });
+    assert.strictEqual(r.headers.get('access-control-allow-origin'), null);
+  } finally { config.clientOrigins.length = 0; }
+});
+
+test('session cookie follows COOKIE_SAMESITE / COOKIE_SECURE and logout clears it the same way', async () => {
+  const config = require('../src/config');
+  const login = async () => (await req('POST', '/login', { u: 'admin', p: 'test-pass' }, { 'x-forwarded-proto': 'https' })).headers.get('set-cookie');
+  const first = await login();
+  assert.match(first, /SameSite=Strict/);
+  assert.match(first, /Max-Age=604800(;|$)/, 'default session is 7 days');
+  config.cookieSameSite = 'none';
+  try {
+    const c = await login();
+    assert.match(c, /SameSite=None/);
+    assert.match(c, /; Secure/);
+    // Secure is forced for SameSite=None even if the proxy header is missing
+    const plain = (await req('POST', '/login', { u: 'admin', p: 'test-pass' })).headers.get('set-cookie');
+    assert.match(plain, /; Secure/);
+    const out = (await req('POST', '/logout')).headers.get('set-cookie');
+    assert.match(out, /^sid=;/);
+    assert.match(out, /Max-Age=0/);
+    assert.match(out, /SameSite=None/);
+  } finally { config.cookieSameSite = 'strict'; }
 });
 
 test('imports the legacy data.json', async () => {

@@ -1,16 +1,17 @@
 #!/usr/bin/env bash
 # One-command install for a fresh Ubuntu/Debian server. Run as root from the project folder:  sudo bash deploy.sh
 # Before running: point your domain's A record at this server's IP.
-# Installs Node.js 20, MongoDB 8.0 (unless you give an Atlas connection string) and Caddy (automatic HTTPS).
+# Installs the API server only; the React frontend is deployed on Vercel. Installs Node.js 20, MongoDB 8.0 (unless you give an Atlas connection string) and Caddy (automatic HTTPS).
 set -euo pipefail
 [ "$(id -u)" = 0 ] || { echo "Run with sudo"; exit 1; }
 cd "$(dirname "$0")"
-[ -f server/src/index.js ] && [ -f client/index.html ] || { echo "Run this from the project folder (the one containing client/ and server/)"; exit 1; }
+[ -f server/src/index.js ] || { echo "Run this from the project folder (the one containing server/)"; exit 1; }
 
 read -rp "Your domain (e.g. card.yourcompany.com): " DOMAIN
 read -rp "Admin username [admin]: " AUSER; AUSER=${AUSER:-admin}
 read -rsp "Admin password (long!): " APASS; echo
 [ ${#APASS} -ge 8 ] || { echo "Password must be at least 8 characters"; exit 1; }
+read -rp "Frontend address on Vercel (e.g. https://sbpo-admin.vercel.app): " COSITE
 read -rp "MongoDB connection string [leave empty to install MongoDB on this server]: " MURI
 
 APP=/opt/linkforge DATA=/var/lib/linkforge
@@ -49,7 +50,7 @@ fi
 
 # --- App ---
 mkdir -p "$APP" "$DATA"
-rsync -a --delete --exclude node_modules --exclude .env client server package.json "$APP/"
+rsync -a --delete --exclude node_modules --exclude .env server package.json "$APP/"
 npm install --prefix "$APP/server" --omit=dev
 
 # An old single-file install (data.json) is imported automatically the first time MongoDB is empty.
@@ -61,6 +62,7 @@ PORT=3000
 TRUST_PROXY=1
 ADMIN_USER=$AUSER
 ADMIN_PASSWORD=$APASS
+CLIENT_ORIGIN=${COSITE%/}
 MONGODB_URI=$MURI
 LEGACY_DATA_FILE=$LEGACY
 EOF
@@ -91,5 +93,5 @@ systemctl daemon-reload
 systemctl enable --now linkforge
 systemctl restart linkforge
 systemctl restart caddy
-echo; echo "Done. Open https://$DOMAIN/admin  (the certificate can take a minute)"
+echo; echo "Done. API is at https://$DOMAIN  (the certificate can take a minute). Point the frontend (Vercel) at it."
 echo "NFC link format: https://$DOMAIN/n/<account-slug>"

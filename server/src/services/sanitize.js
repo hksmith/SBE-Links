@@ -2,7 +2,7 @@
 const crypto = require('crypto');
 const ICONS = require('../data/icons');
 
-const RESERVED = ['admin', 'api', 'go', 'n', 'vcf', 'login', 'logout', 'media', 'favicon.ico'];
+const RESERVED = ['admin', 'api', 'go', 'n', 'vcf', 'login', 'logout', 'media', 'health', 'favicon.ico'];
 const FONTS = ['Inter', 'Poppins', 'DM Sans', 'Montserrat', 'Playfair Display', 'Lora', 'Libre Baskerville', 'Linden Hill', 'Merriweather', 'Space Grotesk', 'Space Mono', 'Orbitron', 'Bebas Neue', 'Pacifico'];
 const TXK = ['name', 'title', 'dept', 'company', 'bio', 'link', 'sub', 'block', 'foot'];
 const NEUTRAL = { pageBg: '#ffffff', headText: '#111111', linkBg: '#111111', linkText: '#ffffff', linkShadow: '#111111', blockBg: '#f3f3f3', blockText: '#111111', radius: 12, bgType: 'solid', bg2: '#302b63', bgImage: '', layout: 'minimal', picShape: 'rounded', picSize: 250, picOutline: false, disp: 'Inter', body: 'Inter', headSize: 'medium', alpha: 0, shadow: false, outline: true, align: 'center', tx: {} };

@@ -36,7 +36,7 @@ module.exports = router => {
   router.get('/go/:account/:item', async (req, res, { params, url }) => {
     const a = await accounts.get(params.account);
     const it = a && a.blocks.flatMap(b => b.items || []).find(i => i.id === params.item);
-    if (!it || !it.url) return redirect(res, a ? '/' + a.slug : '/admin');
+    if (!it || !it.url) return redirect(res, a ? '/' + a.slug : '/');
     if (shouldTrack(req)) stats.track({ t: Date.now(), k: 'click', a: a.id, id: it.id, title: it.title, src: stats.sourceOf(url), dev: dev(req) });
     return redirect(res, it.url);
   });
@@ -44,7 +44,7 @@ module.exports = router => {
   const vcard = async (req, res, { params, url }) => {
     const a = await accounts.get(params.account);
     const c = a && a.blocks.find(b => b.type === 'contact' && (!params.block || b.id === params.block));
-    if (!c || !c.url) return redirect(res, a ? '/' + a.slug : '/admin');
+    if (!c || !c.url) return redirect(res, a ? '/' + a.slug : '/');
     if (shouldTrack(req)) stats.track({ t: Date.now(), k: 'click', a: a.id, id: c.id, title: c.label, src: stats.sourceOf(url), dev: dev(req) });
     return redirect(res, c.url);
   };

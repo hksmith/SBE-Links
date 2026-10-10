@@ -1,0 +1,21 @@
+{
+  "name": "sbpo-link-tree-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "SBPO Link Tree frontend: the React + Vite admin app. Deploy on Vercel; it talks to the Node/MongoDB server.",
+  "scripts": {
+    "dev": "vite",
+    "build": "node scripts/check-config.mjs && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.28.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^5.4.11"
+  }
+}

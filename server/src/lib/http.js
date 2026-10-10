@@ -1,13 +1,4 @@
 // Small response/request helpers on top of Node's http module.
-const fs = require('fs');
-const path = require('path');
-
-const MIME = {
-  '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
-  '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
-  '.webp': 'image/webp', '.gif': 'image/gif', '.ico': 'image/x-icon', '.woff2': 'font/woff2',
-};
-
 function json(res, body, status = 200, headers = {}) {
   res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...headers });
   res.end(JSON.stringify(body));
@@ -45,15 +36,4 @@ function readJson(req, limit = 25e6) {
   });
 }
 
-// Serves a file from `root`, refusing anything that would escape it.
-function sendStatic(res, root, relPath, { cache = 'no-cache' } = {}) {
-  const file = path.resolve(root, '.' + path.posix.normalize('/' + relPath));
-  if (!file.startsWith(path.resolve(root) + path.sep)) return notFound(res);
-  fs.stat(file, (err, st) => {
-    if (err || !st.isFile()) return notFound(res);
-    res.writeHead(200, { 'Content-Type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream', 'Content-Length': st.size, 'Cache-Control': cache });
-    fs.createReadStream(file).pipe(res);
-  });
-}
-
-module.exports = { json, html, redirect, notFound, readJson, sendStatic };
+module.exports = { json, html, redirect, notFound, readJson };

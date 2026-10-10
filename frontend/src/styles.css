@@ -38,7 +38,7 @@ table{width:100%;border-collapse:collapse}td{padding:8px 4px;border-bottom:1px s
 .th{width:60px;height:60px;border-radius:10px;object-fit:cover}.ov{position:fixed;inset:0;background:rgba(22,32,56,.45);backdrop-filter:blur(4px);display:grid;place-items:center;z-index:20}
 .md{width:min(720px,94vw);max-height:84vh;overflow:auto;background:#fff;border:1px solid var(--line);box-shadow:0 30px 80px rgba(20,32,70,.3);border-radius:22px;padding:22px}.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
 .tile{display:block;text-align:left;padding:14px}.tile .chip{margin-bottom:8px}.tile small{color:var(--mut);display:block}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0 6px}.grid2 .seg{margin:4px 0 0}label.f{display:block;font-size:12px;color:var(--mut)}label.f select{margin-top:4px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0 6px}.grid2 .seg{margin:4px 0 0}.f{display:block;font-size:12px;color:var(--mut)}div.f select, label.f select{margin-top:4px}
 .tcs{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:10px;margin-bottom:10px}
 .tc{height:190px;border-radius:16px;border:2px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:6px;padding:14px 10px}.tc:hover{border-color:var(--a);transform:translateY(-2px)}
 .tc u{width:52px;height:52px;background:rgba(127,127,127,.45);display:block}.tc b{font-size:14px;margin-bottom:4px}.tc s{display:block;width:100%;height:20px}
@@ -90,3 +90,38 @@ button svg{vertical-align:-2px}.chip svg{color:var(--a)}
 .toasts{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:60;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
 .toast{background:#162038;color:#fff;padding:10px 16px;border-radius:12px;box-shadow:0 12px 30px rgba(20,32,70,.3);font-weight:600;animation:dlgPop .2s ease-out}
 .toast.err{background:#dc2626}
+
+/* ---------- React dashboard additions ---------- */
+:focus-visible{outline:2px solid var(--a);outline-offset:2px}
+input:focus-visible,textarea:focus-visible,select:focus-visible{outline:0}
+.acc:focus-visible{outline-offset:3px}
+.boot{min-height:100vh;display:grid;place-items:center;text-align:center;color:var(--mut);padding:24px}.boot p{margin:6px 0 16px}.boot b{color:var(--ink);font:700 18px 'Space Grotesk',system-ui,sans-serif}
+code{background:var(--in);border-radius:6px;padding:1px 5px;font-size:.92em}
+
+/* Dropdown menu (replaces <details>) */
+.mn{position:relative}.mn>button{padding:4px 9px}
+.mn>div{position:absolute;right:0;top:34px;background:#fff;border:1px solid var(--line);box-shadow:var(--sh);border-radius:12px;padding:6px;z-index:4;width:130px}
+.mn>div button{display:block;width:100%;border:0;text-align:left;background:none}
+
+/* Block title acts as the expand/collapse button */
+.bh .bt{border:0;background:none;padding:0;font-weight:600;text-align:left;color:var(--ink)}.bh .bt:hover:not(:disabled){color:var(--ink)}
+
+/* Keyboard-reachable switches */
+.sw{position:relative}.sw input{display:block;position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}.sw input:focus-visible+i{outline:2px solid var(--a);outline-offset:2px}
+.tg:focus-visible{outline:2px solid var(--a);outline-offset:2px}
+.tabs button{border-radius:0}
+input[type=search]{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:10px;background:var(--in);outline:0}
+input[type=search]:focus{border-color:var(--a);background:#fff;box-shadow:0 0 0 3px rgba(79,70,229,.14)}
+
+/* Sign-in page */
+.login{min-height:100vh;display:grid;place-items:center;padding:16px}
+.login form{width:min(380px,100%);padding:32px 30px 26px;border:1px solid var(--line);border-radius:24px;background:#fff;box-shadow:0 20px 60px rgba(40,50,120,.15)}
+.login h1{display:flex;align-items:center;gap:12px;margin:0 0 4px;font:700 22px 'Space Grotesk',system-ui,sans-serif}
+.login .mark{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;color:#fff;background:linear-gradient(135deg,var(--a),var(--b));box-shadow:0 6px 16px rgba(79,70,229,.35)}
+.login p{margin:0 0 20px;color:var(--mut)}
+.login input{display:block;width:100%;padding:12px;margin-bottom:10px;border-radius:12px}
+.login button{width:100%;padding:12px;border-radius:12px;font-weight:700}
+.login small{display:block;min-height:18px;margin-top:10px;color:#dc2626}
+.login .by{text-align:center;font-size:12px;color:var(--mut);margin-top:14px}
+
+@media (prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
