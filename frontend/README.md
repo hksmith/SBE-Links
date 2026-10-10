@@ -24,13 +24,11 @@ In **both** modes set `CLIENT_ORIGIN` on the server to the frontend address.
 
 ## Deploy on Vercel
 
-1. Replace `https://api.example.com` with your server address in all 4 rewrites in `vercel.json` (proxy mode).
-2. Environment variables (Vercel → Settings → Environment Variables):
-   - `VITE_PUBLIC_URL` = your server address (NFC links, "Open page" and the preview use it).
-   - `VITE_API_URL` only for direct mode.
-3. Import the repo with **Root Directory** = `frontend` (Vercel detects Vite: build `npm run build`, output `dist`).
-4. On the server set `CLIENT_ORIGIN` to the Vercel address (e.g. `https://sbpo-admin.vercel.app`).
-5. Open the site and sign in with the server's `ADMIN_USER` / `ADMIN_PASSWORD`.
+1. Replace `https://api.example.com` with your server address in all 4 rewrites in `vercel.json`. This is the only place you write it:
+   NFC links, "Open page" and the preview read the address from there too. (`VITE_PUBLIC_URL` is an optional override; `VITE_API_URL` is for direct mode only.)
+2. Import the repo with **Root Directory** = `frontend` (Vercel detects Vite: build `npm run build`, output `dist`).
+3. On the server set `CLIENT_ORIGIN` to the Vercel address (e.g. `https://sbpo-admin.vercel.app`).
+4. Open the site and sign in with the server's `ADMIN_USER` / `ADMIN_PASSWORD`.
 
 If a setting is forgotten the Vercel build **stops with a clear message** instead of deploying something that points at the wrong place.
 

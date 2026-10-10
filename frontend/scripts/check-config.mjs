@@ -1,6 +1,6 @@
-// Runs before `vite build`. On Vercel it stops the build if the deployment settings were left at their
-// placeholders, because a frontend that talks to the wrong server (or prints wrong NFC links) fails in confusing
-// ways. Locally it only prints a warning.
+// Runs before `vite build`. On Vercel it stops the build if the server address was left at its placeholder,
+// because a frontend that talks to the wrong server fails in confusing ways. Locally it only prints a warning.
+// The address is set once: in the rewrites of vercel.json (or VITE_API_URL for direct mode).
 import { readFileSync } from 'node:fs';
 
 const problems = [];
@@ -10,9 +10,6 @@ if (!direct) {
   if (vercel.includes('api.example.com')) {
     problems.push('vercel.json still points at api.example.com. Replace it with your server address (4 places), or set VITE_API_URL to call the server directly.');
   }
-}
-if (!process.env.VITE_PUBLIC_URL && !direct) {
-  problems.push('VITE_PUBLIC_URL is not set. Add it in Vercel → Settings → Environment Variables (your server address, e.g. https://sbpo-api.onrender.com).');
 }
 
 if (problems.length) {

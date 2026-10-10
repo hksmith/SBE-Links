@@ -31,8 +31,7 @@ You can only know `CLIENT_ORIGIN` after step 3, so deploy the frontend once, the
 ### 3. Frontend on Vercel
 Import the repo, set **Root Directory** to `frontend`, then:
 1. In `frontend/vercel.json`, replace `https://api.example.com` with your Render address (4 places).
-2. Add the variable `VITE_PUBLIC_URL` = your Render address.
-3. Deploy, then put the Vercel address into `CLIENT_ORIGIN` on Render.
+2. Deploy, then put the Vercel address into `CLIENT_ORIGIN` on Render.
 
 Details and the alternative "direct" mode are in `frontend/README.md`.
 

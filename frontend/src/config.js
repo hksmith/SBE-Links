@@ -8,7 +8,8 @@ export const API_URL = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
 // Where the public pages (/n/<slug>, /<slug>) live. They are served by the Node server, not by this app,
 // so NFC links, "Open page" and the preview base URL must use the server's own address.
 const fallback = import.meta.env.DEV ? 'http://localhost:3000' : window.location.origin;
-export const PUBLIC_URL = (import.meta.env.VITE_PUBLIC_URL || API_URL || fallback).replace(/\/+$/, '');
+// Order: VITE_PUBLIC_URL (optional override) → VITE_API_URL → the server address in vercel.json → dev/localhost.
+export const PUBLIC_URL = (import.meta.env.VITE_PUBLIC_URL || API_URL || __SERVER_ORIGIN__ || fallback).replace(/\/+$/, '');
 export const PUBLIC_HOST = PUBLIC_URL.replace(/^https?:\/\//, '');
 export const nfcUrl = slug => `${PUBLIC_URL}/n/${slug}`;
 export const pageUrl = slug => `${PUBLIC_URL}/${slug}`;
