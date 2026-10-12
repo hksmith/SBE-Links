@@ -1,6 +1,8 @@
 // Vite config for the admin app.
 //   npm run build  -> client/dist (served by the Node server at /admin)
 //   npm run dev    -> http://localhost:5173/admin/ with hot reload; API calls are proxied to the server on :3000
+//   On Vercel (VERCEL=1) the app is built for the site root (base '/') and vercel.json forwards everything it
+//   doesn't own (API, public pages, images) to the Node server. Override with VITE_BASE if you ever need to.
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { resolve, dirname } from 'node:path';
@@ -12,7 +14,7 @@ const SERVER = process.env.API_URL || 'http://localhost:3000';
 const proxied = ['/api', '/login', '/logout', '/media', '/n/', '/go/', '/vcf/'];
 
 export default defineConfig({
-  base: '/admin/',
+  base: process.env.VITE_BASE ?? (process.env.VERCEL ? '/' : '/admin/'),
   plugins: [react()],
   build: {
     outDir: 'dist',

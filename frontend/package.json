@@ -6,7 +6,7 @@
   "description": "SBPO Link Tree admin app (React + Vite). Built into client/dist and served by the server at /admin.",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "node scripts/check-vercel.mjs && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
