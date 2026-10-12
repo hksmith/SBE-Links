@@ -5,10 +5,12 @@ import { O, slugify } from '../lib/utils.js';
 import { toast } from '../lib/toast.js';
 import { navigate } from '../lib/router.js';
 import { Dialog, showDialog, confirmDialog } from '../components/Dialog.jsx';
+import { showLoginDetails } from './loginDetails.jsx';
 
 function NewAccountDialog({ onClose }) {
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
+  const [login, setLogin] = useState(true);
   const touched = useRef(false), nameRef = useRef(null);
   const host = O.replace(/^https?:\/\//, '') + '/';
 
@@ -16,7 +18,7 @@ function NewAccountDialog({ onClose }) {
     const n = name.trim(), s = slugify(slug);
     if (!n) { nameRef.current.focus(); throw new Error('Please enter a name.'); }
     if (s && s.length < 2) throw new Error('The page address needs at least 2 characters.');
-    return send('/api/accounts', 'POST', { name: n, slug: s || undefined }, 'Could not create the account. Please try again.');
+    return send('/api/accounts', 'POST', { name: n, slug: s || undefined, login }, 'Could not create the account. Please try again.');
   };
 
   return (
@@ -36,6 +38,10 @@ function NewAccountDialog({ onClose }) {
         </div>
         <small className="dlg-hint">Filled in from the name. Don’t change it after programming the NFC card.</small>
       </div>
+      <div className="fld">
+        <label className="opt"><input type="checkbox" checked={login} onChange={e => setLogin(e.target.checked)} />
+          <span><b>Let them see their own statistics</b><small>Creates a view-only sign-in for this card with the standard first-time password. They choose their own password the first time they sign in.</small></span></label>
+      </div>
     </Dialog>
   );
 }
@@ -45,13 +51,14 @@ export async function newAccount() {
   if (!account) return;
   toast(account.slug === slugify(account.profile.name) ? 'Account created' : `Account created at /${account.slug}`);
   navigate('/edit/' + account.id);
+  if (account.login) showLoginDetails('Their sign-in details', 'Send this to the card owner so they can see their statistics.', [{ name: account.profile.name, ...account.login }]);
 }
 
 // Resolves true when the account was deleted.
 export async function deleteAccount(a) {
   const ok = await confirmDialog({
     title: `Delete ${a.name || 'this account'}?`,
-    text: 'This removes the page and all its stats. The NFC link on the card will stop working.',
+    text: 'This removes the page, all its stats and the owner’s sign-in. The NFC link on the card will stop working.',
     confirm: 'Delete account',
   });
   if (!ok) return false;

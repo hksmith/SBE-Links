@@ -109,3 +109,16 @@ details.me div{width:180px;top:40px}details.me a{display:block}
 .cks{max-height:180px;overflow:auto;border:1px solid var(--line);border-radius:12px;padding:6px 10px;margin-top:-2px}.ck{display:flex!important;gap:8px;align-items:center;font-weight:400!important;padding:6px 0;margin:0!important;cursor:pointer}.ck input{margin:0!important}.ck small{color:var(--mut)}
 [hidden]{display:none!important}
 .vcf{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px;border:1px dashed var(--line);border-radius:12px;margin:2px 0 8px}.vcf .vn{flex:1;min-width:140px}.vcf .vn b{display:block;font-size:13px;word-break:break-all}.vcf .vn small{color:var(--mut);font-size:12px}
+
+/* card-owner sign-ins */
+.usr-actions{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}.usr-actions .blk{max-width:none;width:auto;flex:0 1 auto;margin:0}
+.tag.warn{background:rgba(245,158,11,.15);color:#b45309}
+.creds{display:flex;flex-direction:column;gap:8px;max-height:300px;overflow:auto;margin-bottom:10px}
+.cred{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.cred>div{flex:1;min-width:0}.cred b{display:block;font-size:14px}.cred small{color:var(--mut);font-size:12px;overflow-wrap:anywhere}
+.cred code{font-size:12px;background:rgba(79,70,229,.08);color:var(--a);padding:1px 6px;border-radius:6px}
+.cred button{flex:none}
+.first-pw{background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:var(--sh);padding:24px;margin-top:40px}
+.first-pw h1{margin:0 0 6px}.first-pw p{color:var(--mut);margin:0 0 16px}
+.first-pw-out{display:block;text-align:center;margin-top:12px;color:var(--mut);font-size:13px}
+.first-pw label{display:block;font-weight:600;font-size:13px;margin:0 0 6px}.first-pw .fld{margin-bottom:14px}

@@ -10,6 +10,7 @@ import { Dashboard } from './views/Dashboard.jsx';
 import { Users } from './views/Users.jsx';
 import { StatsView } from './views/StatsView.jsx';
 import { Editor } from './editor/Editor.jsx';
+import { FirstPassword } from './views/FirstPassword.jsx';
 
 const EMPTY_BRAND = { logo: '', logoSize: 18, text: '' };
 
@@ -38,7 +39,8 @@ export default function App() {
   let screen = null;
   if (failed) screen = <main><p style={{ color: 'var(--mut)' }}>Could not load the admin app. Check that the server is running, then reload.</p></main>;
   else if (me) {
-    if (name === 'users') screen = <Users />;
+    if (me.mustChange) screen = <FirstPassword />;
+    else if (name === 'users') screen = <Users />;
     else if (name === 'edit' && id) screen = <Editor key={id} id={id} />;
     else if (name === 'stats' && id) screen = <StatsView key={id} id={id} />;
     else screen = <Dashboard />;

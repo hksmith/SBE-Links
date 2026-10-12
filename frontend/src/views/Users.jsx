@@ -9,11 +9,16 @@ import { navigate } from '../lib/router.js';
 import { Icon } from '../components/Icon.jsx';
 import { Dialog, showDialog, confirmDialog } from '../components/Dialog.jsx';
 import { TopBar, Footer } from '../components/TopBar.jsx';
+import { showLoginDetails } from './loginDetails.jsx';
 
 const ROLE = { admin: 'Admin', viewer: 'Viewer' };
 
 function accessText(u, list) {
   if (u.role === 'admin') return 'Full access to everything';
+  if (u.owner) {
+    const a = list.find(x => x.id === u.owner);
+    return a ? `Card owner · statistics of ${a.name || '/' + a.slug} only` : 'Card owner';
+  }
   if (u.accounts === 'all') return 'Statistics of all cards';
   const names = u.accounts.map(id => (list.find(a => a.id === id) || {}).name).filter(Boolean);
   return names.length ? `Statistics of ${names.length} card${names.length > 1 ? 's' : ''}: ${names.join(', ')}` : 'No cards yet';
@@ -35,6 +40,25 @@ export function Users() {
     toast(u ? 'User updated' : `User @${saved.username} added`);
     load();
   };
+  const reset = async u => {
+    if (!(await confirmDialog({ title: `Reset ${u.name}'s password?`, text: `@${u.username} goes back to the standard first-time password and must choose a new one at the next sign-in. They are signed out now.`, confirm: 'Reset password', danger: false, icon: 'profile' }))) return;
+    try {
+      const login = await send('/api/users/' + encodeURIComponent(u.username) + '/reset', 'POST', undefined, 'Could not reset the password.');
+      showLoginDetails('Password reset', 'Send them these sign-in details.', [{ name: u.name, ...login }]);
+      load();
+    } catch (e) { toast(e.message, { error: true }); }
+  };
+  const missing = data ? data.list.filter(a => !data.users.some(u => u.owner === a.id)) : [];
+  const createMissing = async () => {
+    if (!(await confirmDialog({ title: `Create ${missing.length} sign-in${missing.length > 1 ? 's' : ''}?`,
+      text: `Every card without one gets a view-only sign-in (username = its page address) with the standard first-time password. ${missing.map(a => a.name || a.slug).join(', ')}.`,
+      confirm: 'Create sign-ins', danger: false, icon: 'people' }))) return;
+    try {
+      const made = await send('/api/owner-logins', 'POST', undefined, 'Could not create the sign-ins.');
+      load();
+      if (made.length) showLoginDetails(`${made.length} sign-in${made.length > 1 ? 's' : ''} created`, 'Send each card owner their message.', made);
+    } catch (e) { toast(e.message, { error: true }); }
+  };
   const remove = async u => {
     if (!(await confirmDialog({ title: `Delete ${u.name}?`, text: `@${u.username} will no longer be able to sign in.`, confirm: 'Delete user' }))) return;
     const r = await api('/api/users/' + encodeURIComponent(u.username), 'DELETE');
@@ -49,20 +73,25 @@ export function Users() {
       <div className="hero">
         <button onClick={() => navigate('/')}><Icon k="back" size={14} /> Accounts</button>
         <h1 style={{ marginTop: 12 }}>Users</h1>
-        <p>Admins can change everything. Viewers can only see statistics — nothing else.</p>
+        <p>Admins can change everything. Viewers can only see statistics — nothing else. Every card owner gets their own view-only sign-in.</p>
       </div>
-      <button className="blk" style={{ maxWidth: 260 }} onClick={() => edit(null)} disabled={!data}>+ Add user</button>
+      <div className="usr-actions">
+        <button className="blk" onClick={() => edit(null)} disabled={!data}>+ Add user</button>
+        {missing.length > 0 && <button className="blk" onClick={createMissing}>Create sign-ins for {missing.length} card{missing.length > 1 ? 's' : ''} without one</button>}
+      </div>
       <div>
         {data && data.users.map(u => (
           <div key={u.username} className="usr">
             <div className="av">{(u.name || u.username)[0].toUpperCase()}</div>
             <div className="ai">
-              <b>{u.name}</b> <span className={'role ' + u.role}>{ROLE[u.role]}</span>{u.username === me.username && <> <span className="tag">You</span></>}<br />
+              <b>{u.name}</b> <span className={'role ' + u.role}>{ROLE[u.role]}</span>{u.username === me.username && <> <span className="tag">You</span></>}
+              {u.mustChange && <> <span className="tag warn" title="Still on the first-time password">Not signed in yet</span></>}<br />
               <small>@{u.username}{u.builtin ? ' · set in server/.env' : ''}</small><br />
               <small>{accessText(u, data.list)}</small>
             </div>
             {!u.builtin && <>
               <button onClick={() => edit(u)}>Edit</button>
+              {u.username !== me.username && <button onClick={() => reset(u)}>Reset password</button>}
               {u.username !== me.username && <button title="Delete" onClick={() => remove(u)}><Icon k="trash" size={16} /></button>}
             </>}
           </div>
