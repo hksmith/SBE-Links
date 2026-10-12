@@ -2,7 +2,7 @@
 import { ago } from '../lib/utils.js';
 import { Icon } from '../components/Icon.jsx';
 
-function Chart({ days }) {
+export function Chart({ days }) {
   const W = 640, H = 170, Pd = 22;
   const mx = Math.max(1, ...days.map(d => Math.max(d.v, d.c))), bw = (W - Pd * 2) / days.length, y = v => H - Pd - (v / mx) * (H - Pd * 2);
   return <>
@@ -17,7 +17,7 @@ function Chart({ days }) {
   </>;
 }
 
-function Table({ data }) {
+export function Table({ data }) {
   const rows = Object.entries(data || {}).sort((a, b) => b[1] - a[1]);
   return <table><tbody>
     {rows.length ? rows.map(([k, v]) => <tr key={k}><td>{k}</td><td>{v}</td></tr>) : <tr><td style={{ color: 'var(--mut)' }}>No data yet</td></tr>}

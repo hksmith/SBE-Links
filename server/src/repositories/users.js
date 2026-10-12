@@ -1,6 +1,7 @@
 // users collection: people who can sign in besides the built-in admin from .env. _id === username.
 //   { _id, username, name, role: 'admin'|'viewer', accounts: 'all' | [accountId], salt, hash, ver, created,
 //     owner?: accountId   (view-only login created for a card's owner),
+//     company?: companyId (company admin: sees the statistics of every card of that company),
 //     mustChange?: true   (still on the generic first-time password) }
 // `ver` is part of every session cookie; bumping it (password change) signs out old sessions.
 const { db } = require('../db');
@@ -30,5 +31,8 @@ module.exports = {
   },
   async removeOwnedBy(accountId) {
     await db.users.deleteMany({ owner: String(accountId) });
+  },
+  async removeCompany(companyId) {
+    await db.users.deleteMany({ company: String(companyId) });
   },
 };

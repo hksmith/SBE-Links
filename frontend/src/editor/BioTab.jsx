@@ -10,6 +10,7 @@ import { CopyButton } from '../components/CopyButton.jsx';
 import { confirmDialog } from '../components/Dialog.jsx';
 import { useEd, Text, Area, FontSelect, Slider } from './fields.jsx';
 import { useDragSort, move } from './useDragSort.js';
+import { HeaderEditor } from './HeaderEditor.jsx';
 
 export function BioTab({ open, setOpen }) {
   const { cur, update } = useEd();
@@ -25,11 +26,13 @@ export function BioTab({ open, setOpen }) {
   };
 
   return <>
+    {cur.kind === 'template' && <div className="note">In links you can write <code>{'{phone}'}</code>, <code>{'{email}'}</code>, <code>{'{whatsapp}'}</code>, <code>{'{website}'}</code>, <code>{'{linkedin}'}</code>, <code>{'{address}'}</code> or any Excel column, e.g. <code>{'tel:{phone}'}</code> or <code>{'https://wa.me/{whatsapp}'}</code>. Each card fills in its own details; a link with an empty detail is hidden on that card.</div>}
+    {cur.company && cur.kind === 'account' && <div className="note">These links belong to this card only. Details like <code>{'{phone}'}</code> come from <b>Contact details</b> in the header.</div>}
     <button className="blk" onClick={() => setAdding(true)}>+ Add block</button>
     <div>
       <div className="bc">
         <div className="bh" onClick={() => toggle('hdr')}>
-          <span style={{ width: 12 }} /><span className="chip"><Icon k="profile" /></span><b>Header</b><i />
+          <span style={{ width: 12 }} /><span className="chip"><Icon k={cur.kind === 'page' ? 'building' : 'profile'} /></span><b>{cur.kind === 'page' ? 'Company details' : cur.kind === 'template' ? 'Header & sample details' : 'Header'}</b><i />
         </div>
         {open === 'hdr' && <div className="bd"><HeaderEditor /></div>}
       </div>
@@ -68,45 +71,6 @@ function BlockCard({ b, i, open, onToggle, drag, handle, over }) {
   );
 }
 
-function HeaderEditor() {
-  const { cur, update, upload } = useEd();
-  const p = cur.profile, nfc = `${O}/n/${cur.slug}`;
-  const clear = k => update(d => { d.profile[k] = ''; });
-  return <>
-    <div className="row" style={{ marginBottom: 8 }}>
-      {p.photo && <img className="th" src={p.photo} alt="" />}
-      <button onClick={() => upload('photo')}><Icon k="upload" size={14} /> {p.photo ? 'Change' : 'Upload'} photo</button>
-      {p.photo && <button onClick={() => clear('photo')}>Remove</button>}
-    </div>
-    <Text path="profile.name" placeholder="Full name" />
-    <Text path="profile.title" placeholder="Job title (e.g. Manager)" />
-    <Text path="profile.department" placeholder="Department" />
-    <Text path="profile.company" placeholder="Company name" />
-    <Area path="profile.bio" placeholder="Short bio (optional)" />
-    <div className="row" style={{ marginBottom: 4 }}>
-      {p.logo && <img className="th" src={p.logo} alt="" style={{ objectFit: 'contain', background: '#fff' }} />}
-      <button onClick={() => upload('logo')}><Icon k="upload" size={14} /> {p.logo ? 'Change' : 'Upload'} company logo</button>
-      {p.logo && <button onClick={() => clear('logo')}>Remove</button>}
-    </div>
-    <small className="hint">The company logo shows in the top-right corner of the page.</small>
-    {p.logo && (
-      <div className="lgc">
-        <h2 style={{ margin: '10px 0 0' }}>Logo size &amp; crop</h2>
-        <Slider label="Size (% of page width)" path="profile.logoSize" min={10} max={45} value={Math.min(p.logoSize ?? 30, 45)} unit="%" />
-        <Slider label="Crop height (%)" path="profile.logoH" min={15} max={150} value={p.logoH ?? 40} unit="%" />
-        <Slider label="Zoom (%)" path="profile.logoZoom" min={50} max={300} value={p.logoZoom ?? 100} unit="%" />
-        <Slider label="Move left / right" path="profile.logoX" min={-50} max={50} value={p.logoX ?? 0} unit="%" />
-        <Slider label="Move up / down" path="profile.logoY" min={-50} max={50} value={p.logoY ?? 0} unit="%" />
-        <button onClick={() => update(d => Object.assign(d.profile, { logoSize: 30, logoZoom: 100, logoX: 0, logoY: 0 }))}>Reset logo</button>
-      </div>
-    )}
-    <small style={{ color: 'var(--mut)' }}>Page address (don’t change after programming the NFC card)</small>
-    <Text path="slug" placeholder="page-address" />
-    <small style={{ color: 'var(--mut)' }}>NFC card URL</small>
-    <div className="row"><input readOnly value={nfc} /><CopyButton text={nfc} /></div>
-  </>;
-}
-
 function BlockBody({ b, i }) {
   const { update, upload, uploadVcf, stats } = useEd();
   switch (b.type) {
@@ -123,6 +87,8 @@ function BlockBody({ b, i }) {
     case 'video': return <Text path={`blocks.${i}.url`} placeholder="YouTube link" />;
     case 'contact': return <>
       <Text path={`blocks.${i}.label`} placeholder="Button label" />
+      <label className="sw"><span>Build it automatically from the person’s details</span><input type="checkbox" checked={!!b.auto} onChange={e => update(d => { d.blocks[i].auto = e.target.checked; })} /><i /></label>
+      {b.auto ? <small className="hint">The contact card is made from the name, job title, company, phone, email and website — always up to date, nothing to upload.</small> : <>
       <div className="vcf">
         {b.vcf ? <>
           <span className="chip"><Icon k="contact" /></span>
@@ -137,6 +103,7 @@ function BlockBody({ b, i }) {
       {!b.vcf && <>
         <small style={{ color: 'var(--mut)' }}>…or paste a link to a vCard hosted elsewhere</small>
         <Text path={`blocks.${i}.url`} placeholder="https://…/contact.vcf" />
+      </>}
       </>}
       <small className="hint">The server sends the vCard with the right contact settings, so phones offer to save it instead of just downloading a file. The button only shows once a file or link is set. Taps on it are counted.</small>
       <small>{stats.byLink[b.id] || 0} clicks</small>

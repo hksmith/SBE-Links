@@ -4,6 +4,7 @@ import { navigate } from '../lib/router.js';
 import { Icon } from './Icon.jsx';
 import { Menu } from './Menu.jsx';
 import { newAccount } from '../views/accountActions.jsx';
+import { newCompany } from '../views/companyActions.jsx';
 import { changePassword } from '../views/Users.jsx';
 
 export function TopBar() {
@@ -14,11 +15,12 @@ export function TopBar() {
       <span className="sp" />
       {isAdmin && <>
         <button onClick={() => navigate('/users')}><Icon k="people" size={14} /> Users</button>
+        <button onClick={newCompany}><Icon k="building" size={14} /> New company</button>
         <button className="pri" onClick={newAccount}>+ New account</button>
       </>}
       <Menu className="me" label="Account menu" summary={<>
         <span className="who">{me.name}</span>
-        <span className={'role ' + me.role}>{me.role === 'admin' ? 'Admin' : 'Viewer'}</span>
+        <span className={'role ' + me.role}>{me.role === 'admin' ? 'Admin' : me.company ? 'Company' : 'Viewer'}</span>
       </>}>
         {!me.builtin && <button onClick={changePassword}>Change password</button>}
         <a href="/logout"><button>Log out</button></a>

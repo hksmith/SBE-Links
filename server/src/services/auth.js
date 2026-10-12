@@ -36,9 +36,10 @@ const builtinUser = () => ({ username: config.adminUser, name: 'Main admin', rol
 // What the browser is allowed to see about a user.
 // mustChange: still on the generic first-time password, has to pick their own before seeing anything.
 // owner: the card this login was created for (card-owner logins are removed together with their card).
+// company: company admin of that company (sees all its cards).
 const publicUser = u => ({
   username: u.username, name: u.name || u.username, role: u.role, accounts: u.accounts, builtin: !!u.builtin,
-  mustChange: !!u.mustChange, owner: u.owner || null, created: u.created || 0,
+  mustChange: !!u.mustChange, owner: u.owner || null, company: u.company || null, created: u.created || 0,
 });
 
 function makeCookie(req, u) {
@@ -91,6 +92,9 @@ const logoutCookie = 'sid=; Path=/; Max-Age=0';
 
 // Permission helpers
 const isAdmin = u => !!u && u.role === 'admin';
-const canSee = (u, accountId) => !!u && (u.role === 'admin' || u.accounts === 'all' || (Array.isArray(u.accounts) && u.accounts.includes(accountId)));
+// `a` is a card ({ id, company }) or a company ({ id, isCompany: true }).
+const canSee = (u, a) => !!u && !!a && (u.role === 'admin' || (u.company
+  ? (a.isCompany ? a.id === u.company : a.company === u.company)
+  : !a.isCompany && (u.accounts === 'all' || (Array.isArray(u.accounts) && u.accounts.includes(a.id)))));
 
 module.exports = { init, currentUser, login, logoutCookie, makeCookie, hashPassword, checkPassword, publicUser, isAdmin, canSee, ROLES };

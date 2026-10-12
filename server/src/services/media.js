@@ -1,6 +1,7 @@
 // Image handling: turns data: URLs into stored media and keeps the media collection tidy.
 const mediaRepo = require('../repositories/media');
 const accountsRepo = require('../repositories/accounts');
+const companiesRepo = require('../repositories/companies');
 const settings = require('../repositories/settings');
 const { DATA_URL } = require('./sanitize');
 
@@ -37,7 +38,9 @@ const idOf = url => (typeof url === 'string' && url.startsWith('/media/') ? url.
 // A grace period keeps fresh uploads that have not been saved into an account yet.
 async function collectGarbage(graceMs = 24 * 3600e3) {
   const keep = new Set();
-  for (const a of await accountsRepo.list()) for (const [obj, k] of slots(a)) { const id = idOf(obj && obj[k]); if (id) keep.add(id); }
+  const docs = await accountsRepo.list();
+  for (const c of await companiesRepo.list()) docs.push({ ...c.page, theme: c.theme }, { ...c.template, theme: c.theme });
+  for (const a of docs) for (const [obj, k] of slots(a)) { const id = idOf(obj && obj[k]); if (id) keep.add(id); }
   const brand = await settings.get('brand', {});
   const b = idOf(brand && brand.logo);
   if (b) keep.add(b);

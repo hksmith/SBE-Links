@@ -4,7 +4,8 @@
 // HTML page, so on Android it just lands in Downloads. This service therefore always serves the
 // vCard from our own server with the right headers:
 //   - an uploaded .vcf (stored in the media collection), or
-//   - the pasted link, fetched by the server and passed on with the right headers.
+//   - the pasted link, fetched by the server and passed on with the right headers, or
+//   - built automatically from the person's details (block.auto): name, job title, company, phone, email, …
 const mediaRepo = require('../repositories/media');
 
 const MAX = 1e6;
@@ -55,8 +56,30 @@ async function fetchRemote(url) {
   }
 }
 
+// A vCard built from a card's profile and details.
+function build(doc, pageUrl) {
+  const p = doc.profile || {}, f = doc.fields || {};
+  const e = v => String(v ?? '').replace(/\\/g, '\\\\').replace(/\r?\n/g, '\\n').replace(/([,;])/g, '\\$1');
+  const name = String(p.name || '').trim(), parts = name.split(/\s+/);
+  const last = parts.length > 1 ? parts.pop() : '', first = parts.join(' ');
+  const lines = ['BEGIN:VCARD', 'VERSION:3.0', `N:${e(last)};${e(first)};;;`, `FN:${e(name || 'Contact')}`];
+  if (p.company || p.department) lines.push(`ORG:${e(p.company)}${p.department ? ';' + e(p.department) : ''}`);
+  if (p.title) lines.push(`TITLE:${e(p.title)}`);
+  if (f.phone) lines.push(`TEL;TYPE=CELL,VOICE:${e(f.phone)}`);
+  if (f.whatsapp && f.whatsapp !== f.phone) lines.push(`TEL;TYPE=CELL:${e(f.whatsapp)}`);
+  if (f.email) lines.push(`EMAIL;TYPE=INTERNET:${e(f.email)}`);
+  if (f.website) lines.push(`URL:${e(/^https?:\/\//i.test(f.website) ? f.website : 'https://' + f.website)}`);
+  if (f.linkedin) lines.push(`URL;TYPE=LinkedIn:${e(f.linkedin)}`);
+  if (pageUrl) lines.push(`URL;TYPE=Card:${e(pageUrl)}`);
+  if (f.address) lines.push(`ADR;TYPE=WORK:;;${e(f.address)};;;;`);
+  lines.push('END:VCARD');
+  return lines.join('\r\n') + '\r\n';
+}
+
 // The vCard text behind a contact block, or null when there is none / it cannot be loaded.
-async function load(block) {
+// `doc` (the card as displayed) is needed for automatic vCards.
+async function load(block, doc, pageUrl) {
+  if (block.auto && doc) return build(doc, pageUrl);
   if (block.vcf) {
     const m = await mediaRepo.get(block.vcf.slice(7));
     if (m) return m.data.toString('utf8');
@@ -77,4 +100,4 @@ function send(res, text, name) {
   res.end(text);
 }
 
-module.exports = { storeUpload, load, send, isVcard, directUrl };
+module.exports = { storeUpload, load, send, build, isVcard, directUrl };

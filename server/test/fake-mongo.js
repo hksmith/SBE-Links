@@ -26,6 +26,7 @@ function matches(doc, filter) {
         }
       });
     }
+    if (cond === null) return v === null || v === undefined; // like MongoDB: null also matches a missing field
     return v === cond;
   });
 }
@@ -60,10 +61,14 @@ class Collection {
     for (const d of this.docs) {
       if (d === except) continue;
       if (d._id === doc._id) throw dupError();
-      for (const f of this.unique) if (getPath(d, f) !== undefined && getPath(d, f) === getPath(doc, f)) throw dupError();
+      for (const fs of this.unique) {
+        if (fs.length === 1 && getPath(d, fs[0]) === undefined) continue;
+        if (fs.every(f => (getPath(d, f) ?? null) === (getPath(doc, f) ?? null))) throw dupError();
+      }
     }
   }
-  async createIndex(spec, opts = {}) { if (opts.unique) this.unique.push(Object.keys(spec)[0]); }
+  async createIndex(spec, opts = {}) { if (opts.unique) this.unique.push(Object.keys(spec)); }
+  async dropIndex() { throw new Error('index not found'); }
   find(filter, opts = {}) { return new Cursor(this.docs.filter(d => matches(d, filter)), opts.projection); }
   async findOne(filter) { const d = this.docs.find(x => matches(x, filter)); return d ? clone(d) : null; }
   async countDocuments(filter) { return this.docs.filter(d => matches(d, filter)).length; }
@@ -108,6 +113,6 @@ class Collection {
   async deleteMany(filter) { const before = this.docs.length; this.docs = this.docs.filter(d => !matches(d, filter)); return { deletedCount: before - this.docs.length }; }
 }
 
-const fakeDb = () => Object.fromEntries(['accounts', 'events', 'stats', 'media', 'settings', 'users'].map(n => [n, new Collection()]));
+const fakeDb = () => Object.fromEntries(['accounts', 'companies', 'events', 'stats', 'media', 'settings', 'users'].map(n => [n, new Collection()]));
 
 module.exports = { fakeDb, Collection };

@@ -3,6 +3,8 @@
 //   #/users       users (admins)
 //   #/edit/<id>   account editor (admins)
 //   #/stats/<id>  read-only statistics (viewers)
+//   #/company/<id>  a company: its cards and combined statistics
+//   #/cpage/<id>  company page editor · #/ctpl/<id>  company card design editor (admins)
 import { useEffect, useState } from 'react';
 
 const parse = () => {

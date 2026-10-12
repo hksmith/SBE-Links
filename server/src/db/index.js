@@ -1,6 +1,6 @@
 // Holds the MongoDB collections used by the repositories.
 // `connect()` opens the real database; tests call `use()` with in-memory stand-ins.
-const COLLECTIONS = ['accounts', 'events', 'stats', 'media', 'settings', 'users'];
+const COLLECTIONS = ['accounts', 'companies', 'events', 'stats', 'media', 'settings', 'users'];
 const db = {};
 let client = null;
 
@@ -23,7 +23,12 @@ async function connect(uri, dbName) {
 }
 
 async function ensureIndexes() {
-  await db.accounts.createIndex({ slug: 1 }, { unique: true });
+  // Page addresses: unique among individual cards (company: null), and unique inside each company.
+  // Older databases had a plain unique index on slug; it is replaced by the per-company one.
+  await db.accounts.dropIndex('slug_1').catch(() => {});
+  await db.accounts.createIndex({ company: 1, slug: 1 }, { unique: true });
+  await db.accounts.createIndex({ company: 1, created: 1 });
+  await db.companies.createIndex({ slug: 1 }, { unique: true });
   await db.events.createIndex({ a: 1, t: -1 });
   await db.events.createIndex({ a: 1, k: 1, t: -1 });
   await db.media.createIndex({ created: 1 });

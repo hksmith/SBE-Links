@@ -1,4 +1,5 @@
-// Account editor: top bar, Link in Bio / Design / Analytics tabs, live phone preview, autosave and undo.
+// Editor: top bar, Link in Bio / Design / Analytics tabs, live phone preview, autosave and undo.
+// Edits a card (kind 'account'), a company page ('page') or a company's card design ('template').
 import { useState } from 'react';
 import { O, cls } from '../lib/utils.js';
 import { navigate } from '../lib/router.js';
@@ -10,35 +11,45 @@ import { useEditor } from './useEditor.js';
 import { BioTab } from './BioTab.jsx';
 import { DesignTab } from './DesignTab.jsx';
 
-const TABS = [['bio', 'Link in Bio'], ['design', 'Design'], ['stats', 'Analytics']];
+const TABS = {
+  account: [['bio', 'Link in Bio'], ['design', 'Design'], ['stats', 'Analytics']],
+  page: [['bio', 'Company page'], ['design', 'Design'], ['stats', 'Analytics']],
+  template: [['bio', 'Card content'], ['design', 'Design']],
+};
 
-export function Editor({ id }) {
-  const ed = useEditor(id);
+export function Editor({ id, kind = 'account' }) {
+  const ed = useEditor(id, kind);
   const { cur, stats, status, preview } = ed;
   const [tab, setTab] = useState('bio');
-  const [open, setOpen] = useState(null); // expanded block id ('hdr' = header)
+  const [open, setOpen] = useState(kind === 'account' ? null : 'hdr'); // expanded block id ('hdr' = header)
   const [thTab, setThTab] = useState('Classic');
   const [bsTab, setBsTab] = useState('Popular');
 
-  const back = async () => { if (ed.dirty.current) await ed.save(); navigate('/'); };
-  if (!cur || !stats) return <header className="top"><button onClick={() => navigate('/')}><Icon k="back" size={14} /> Accounts</button></header>;
+  const co = cur && cur.companyInfo;
+  const home = kind !== 'account' || (cur && cur.company) ? `/company/${co ? co.id : id}` : '/';
+  const back = async () => { if (ed.dirty.current) await ed.save(); navigate(home); };
+  const backBtn = <button onClick={back}><Icon k="back" size={14} /> {co ? co.name : 'Accounts'}</button>;
+  if (!cur || !stats) return <header className="top">{backBtn}</header>;
 
-  const pageUrl = `${O}/${cur.slug}`;
+  const path = cur.path || cur.slug, pageUrl = `${O}/${path}`;
   const pickTab = k => { setTab(k); if (k === 'stats') ed.reloadStats(); };
+  const title = kind === 'page' ? 'Company page' : kind === 'template' ? 'Card design for everyone' : cur.profile.name || 'Account';
 
   return (
     <EditorContext.Provider value={ed}>
       <header className="top">
-        <button onClick={back}><Icon k="back" size={14} /> Accounts</button>
-        <b>{cur.profile.name || 'Account'}</b>
+        {backBtn}
+        <b>{title}</b>
         <span className="sp" />
-        <div className="dom">
-          <span>{pageUrl}</span>
-          <CopyButton text={pageUrl} />
-          <button onClick={() => window.open('/' + cur.slug, '_blank')}>Open <Icon k="open" size={13} /></button>
-        </div>
-        <CopyButton text={`${O}/n/${cur.slug}`}>NFC link</CopyButton>
-        <ShareButton className="pri" url={pageUrl} title={cur.profile.name} />
+        {kind !== 'template' && <>
+          <div className="dom">
+            <span>{pageUrl}</span>
+            <CopyButton text={pageUrl} />
+            <button onClick={() => window.open('/' + path, '_blank')}>Open <Icon k="open" size={13} /></button>
+          </div>
+          <CopyButton text={`${O}/n/${path}`}>NFC link</CopyButton>
+          <ShareButton className="pri" url={pageUrl} title={cur.profile.name} />
+        </>}
       </header>
       <main>
         <div className="ed">
@@ -50,7 +61,7 @@ export function Editor({ id }) {
               <small style={{ color: 'var(--mut)', alignSelf: 'center' }} aria-live="polite">{status}</small>
             </div>
             <div className="tabs">
-              {TABS.map(([k, n]) => <button key={k} className={cls(tab === k && 'on')} onClick={() => pickTab(k)}>{n}</button>)}
+              {TABS[kind].map(([k, n]) => <button key={k} className={cls(tab === k && 'on')} onClick={() => pickTab(k)}>{n}</button>)}
             </div>
             <div>
               {tab === 'bio' && <BioTab open={open} setOpen={setOpen} />}
@@ -58,7 +69,10 @@ export function Editor({ id }) {
               {tab === 'stats' && <Analytics account={cur} stats={stats} />}
             </div>
           </div>
-          <div><div className="phone"><iframe title="Preview" srcDoc={preview} /></div></div>
+          <div>
+            <div className="phone"><iframe title="Preview" srcDoc={preview} /></div>
+            {kind === 'template' && <small className="hint" style={{ display: 'block', textAlign: 'center', marginTop: 10 }}>Preview with the sample details. Each card shows its own.</small>}
+          </div>
         </div>
       </main>
     </EditorContext.Provider>

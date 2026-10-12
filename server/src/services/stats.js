@@ -35,4 +35,32 @@ async function detail(account) {
   return s;
 }
 
-module.exports = { BOT, device, sourceOf, blank, track, listStats, detail };
+// Totals of several pages added up (a company: its page plus every card).
+function sum(list) {
+  const s = blank();
+  s.dev = {}; s.src = {};
+  for (const x of list) {
+    if (!x) continue;
+    s.views += x.views || 0; s.taps += x.taps || 0; s.clicks += x.clicks || 0; s.last = Math.max(s.last, x.last || 0);
+    for (const k of ['dev', 'src']) for (const [n, v] of Object.entries(x[k] || {})) s[k][n] = (s[k][n] || 0) + v;
+  }
+  return s;
+}
+
+// Company statistics: totals, 14-day chart, devices, sources and recent clicks over all of `ids`.
+async function combined(ids) {
+  const day = t => new Date(t).toISOString().slice(0, 10);
+  const days = [...Array(14)].map((_, i) => day(Date.now() - (13 - i) * 864e5));
+  const idx = Object.fromEntries(days.map((d, i) => [d, i]));
+  const all = await events.totals(), want = new Set(ids);
+  const s = { ...sum(all.filter(x => want.has(x._id))), days: days.map(d => ({ d, v: 0, c: 0 })) };
+  for (const e of await events.sinceMany(ids, Date.parse(days[0]))) {
+    const i = idx[day(e.t)];
+    if (i == null) continue;
+    if (e.k === 'view') s.days[i].v++; else s.days[i].c++;
+  }
+  s.recent = await events.recentClicksMany(ids, 20);
+  return s;
+}
+
+module.exports = { BOT, device, sourceOf, blank, track, listStats, detail, combined, sum };

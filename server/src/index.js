@@ -5,6 +5,7 @@ const database = require('./db');
 const auth = require('./services/auth');
 const media = require('./services/media');
 const { importLegacyIfEmpty } = require('./services/migrate');
+const owners = require('./services/owners');
 const { createApp } = require('./app');
 
 async function main() {
@@ -17,6 +18,8 @@ async function main() {
   }
   await importLegacyIfEmpty(config.legacyDataFile);
   await auth.init();
+  const made = await owners.backfillOnce();
+  if (made) console.log(`Created view-only sign-ins for ${made} existing card${made > 1 ? 's' : ''}.`);
 
   const server = http.createServer(createApp());
   server.listen(config.port, () => {

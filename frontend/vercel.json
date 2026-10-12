@@ -5,7 +5,7 @@
   "outputDirectory": "dist",
   "rewrites": [
     { "source": "/admin", "destination": "/login.html" },
-    { "source": "/:path*", "destination": "https://sbe-links.onrender.com/:path*" }
+    { "source": "/:path*", "destination": "https://api.example.com/:path*" }
   ],
   "headers": [
     {

@@ -11,10 +11,11 @@ const iconOf = (i, sz = 22) => (i.img ? `<img alt="" src="${esc(i.img)}">` : i.i
 // Company logo sits in the top-right corner. logoSize = % of the page width, capped so it stays a corner logo.
 const LOGO_MAX_PCT = 45;
 
-function renderPage(a, { src = 'direct', preview = false, brand = {} } = {}) {
+// Company pages (a.isCompany) show the company logo large in the center instead of a photo, and can list
+// the people of the company: team = [{ name, title, photo, href }].
+function renderPage(a, { src = 'direct', preview = false, brand = {}, team = null } = {}) {
   const brandLogo = brand.logo || '', brandText = brand.text ?? 'Powered by Shaggar BPO Enterprise', brandSize = brand.logoSize || 18;
   const t = a.theme, p = a.profile, T = preview ? ' target="_blank" rel="noopener"' : '', L = t.align === 'left';
-  const go = id => `/go/${a.id}/${id}?s=${src}`;
   const LG = { s: Math.min(p.logoSize ?? 30, LOGO_MAX_PCT), h: p.logoH ?? 40, z: p.logoZoom ?? 100, x: p.logoX ?? 0, y: p.logoY ?? 0 };
   const X = t.tx || {}, tf = k => (X[k] && X[k].f ? `font-family:${fam(X[k].f)};` : ''), ts = k => (X[k] && X[k].s ? `font-size:${X[k].s}px;` : '');
   const TXCSS = `h1{${tf('name')}${ts('name')}}.ti{${tf('title')}${ts('title')}}.dp{${tf('dept')}${ts('dept')}}.co{${tf('company')}${ts('company')}}.bio{${tf('bio')}${ts('bio')}}.lk{${tf('link')}}.lk .l{${ts('link')}}.lk .l small{${tf('sub')}${ts('sub')}}.bx{${tf('block')}${ts('block')}}.pw{${tf('foot')}${ts('foot')}}`;
@@ -46,25 +47,49 @@ h1{font-family:${fam(t.disp)};font-size:${hs}px;margin:10px 0 4px;line-height:1.
 .gal{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin:0 0 12px}.gal img{width:100%;border-radius:${t.radius}px;display:block}
 .vd{position:relative;padding-top:56.25%;margin:0 0 12px;border-radius:${t.radius}px;overflow:hidden}.vd iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
 .soc{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin:0 0 12px}.s.ic{width:46px;height:46px;padding:0;display:inline-flex;align-items:center;justify-content:center}.s img{width:24px;height:24px;border-radius:50%;object-fit:cover}.s{padding:9px 16px;border-radius:99px;background:${lkbg};color:${t.linkText};text-decoration:none;font-size:14px;font-weight:700;border:${bd}}
-hr{border:0;border-top:1px solid currentColor;opacity:.25;margin:16px 0}${TXCSS}</style></head><body><div class="pg">`;
+hr{border:0;border-top:1px solid currentColor;opacity:.25;margin:16px 0}
+.clg{display:block;margin:40px auto 12px;box-sizing:border-box;max-width:min(${t.picSize}px,72%);max-height:${Math.round(t.picSize * 0.8)}px;object-fit:contain;padding:12px 16px;background:rgba(255,255,255,.96);border-radius:20px;box-shadow:0 8px 26px rgba(0,0,0,.16)}
+.tmh{font-family:${fam(t.disp)};font-size:20px;margin:26px 0 12px}.tm .i{width:40px;height:40px;border-radius:50%;overflow:hidden;background:rgba(127,127,127,.25);font-size:17px}.tm .i img{width:40px;height:40px;border-radius:50%}${TXCSS}</style></head><body><div class="pg">`;
 
+  if (a.isCompany) return h + companyHeader(a, team, src, T) + footer(a, brandText, brandLogo, brandSize);
   const logo = p.logo ? `<div class="lgc"><div class="lgw"><img alt="${esc(p.company || 'Company logo')}" src="${esc(p.logo)}"></div></div>` : '';
   if (logo) h += overlay ? `<div class="lgo">${logo}</div>` : `<div class="lgbar">${logo}</div>`;
   if (p.photo) h += t.layout === 'banner' ? `<img class="bn" alt="" src="${esc(p.photo)}">` : t.layout === 'portrait' ? `<div class="pt"><img alt="" src="${esc(p.photo)}"></div>` : `<img class="pp" alt="" src="${esc(p.photo)}">`;
   h += `<div class="w"${p.photo ? '' : ` style="padding-top:${logo ? 16 : 48}px"`}><h1>${esc(p.name)}</h1><div class="hd">${p.title ? `<div class="ti">${esc(p.title)}</div>` : ''}${p.department ? `<div class="dp">${esc(p.department)}</div>` : ''}${p.company ? `<div class="co">${esc(p.company)}</div>` : ''}</div>${p.bio ? `<div class="bio">${esc(p.bio)}</div>` : ''}`;
 
+  return h + blocksHtml(a, src, T) + footer(a, brandText, brandLogo, brandSize);
+}
+
+function companyHeader(a, team, src, T) {
+  const p = a.profile;
+  let h = p.logo ? `<img class="clg" alt="${esc(p.name)}" src="${esc(p.logo)}">` : '';
+  h += `<div class="w"${p.logo ? '' : ' style="padding-top:48px"'}><h1>${esc(p.name)}</h1><div class="hd">${p.title ? `<div class="ti">${esc(p.title)}</div>` : ''}</div>${p.bio ? `<div class="bio">${esc(p.bio)}</div>` : ''}`;
+  h += blocksHtml(a, src, T);
+  if (team && team.length) {
+    h += `<h2 class="tmh">Our team</h2>` + team.map(m => `<a class="lk tm" href="${esc(m.href)}"${T}><span class="i">${m.photo ? `<img alt="" src="${esc(m.photo)}">` : esc((m.name || '?')[0].toUpperCase())}</span><span class="l">${esc(m.name)}${m.title ? `<small>${esc(m.title)}</small>` : ''}</span></a>`).join('');
+  }
+  return h;
+}
+
+function blocksHtml(a, src, T) {
+  const go = id => `/go/${a.id}/${id}?s=${src}`;
+  let h = '';
   for (const b of a.blocks) {
     if (b.off) continue;
     if (b.type === 'links') { for (const i of b.items) if (!i.off) h += `<a class="lk" href="${go(i.id)}"${T}><span class="i">${iconOf(i)}</span><span class="l">${esc(i.title)}${i.sub ? `<small>${esc(i.sub)}</small>` : ''}</span></a>`; }
     else if (b.type === 'social') h += `<div class="soc">${b.items.filter(i => !i.off).map(i => { const ic = iconOf(i, 24); return `<a class="s${ic ? ' ic' : ''}" href="${go(i.id)}" aria-label="${esc(i.title)}"${T}>${ic || esc(i.title)}</a>`; }).join('')}</div>`;
-    else if (b.type === 'contact') { if (b.url || b.vcf) h += `<a class="lk" data-vcf href="/vcf/${a.id}/${b.id}?s=${src}"${T}><span class="i">${svg('contact')}</span><span class="l">${esc(b.label)}</span></a>`; }
+    else if (b.type === 'contact') { if (b.url || b.vcf || b.auto) h += `<a class="lk" data-vcf href="/vcf/${a.id}/${b.id}?s=${src}"${T}><span class="i">${svg('contact')}</span><span class="l">${esc(b.label)}</span></a>`; }
     else if (b.type === 'text') h += `<div class="bx"${b.f || b.s ? ` style="${b.f ? `font-family:${fam(b.f)};` : ''}${b.s ? `font-size:${b.s}px;` : ''}"` : ''}>${esc(b.text)}</div>`;
     else if (b.type === 'images') h += `<div class="gal">${b.imgs.map(s => `<img alt="" src="${esc(s)}">`).join('')}</div>`;
     else if (b.type === 'video') { const m = /(?:v=|youtu\.be\/|embed\/)([\w-]{11})/.exec(b.url || ''); if (m) h += `<div class="vd"><iframe src="https://www.youtube.com/embed/${m[1]}" loading="lazy" allowfullscreen></iframe></div>`; }
     else if (b.type === 'divider') h += '<hr>';
   }
-  const hasVcf = a.blocks.some(b => b.type === 'contact' && !b.off && (b.url || b.vcf));
-  return h + (brandText || brandLogo ? `<div class="pw">${brandText ? `<span>${esc(brandText)}</span>` : ''}${brandLogo ? `<img alt="" src="${esc(brandLogo)}" style="height:${brandSize}px;max-width:${brandSize * 5}px">` : ''}</div>` : '') + `</div></div>${hasVcf ? ANDROID_HINT : ''}</body></html>`;
+  return h;
+}
+
+function footer(a, brandText, brandLogo, brandSize) {
+  const hasVcf = a.blocks.some(b => b.type === 'contact' && !b.off && (b.url || b.vcf || b.auto));
+  return (brandText || brandLogo ? `<div class="pw">${brandText ? `<span>${esc(brandText)}</span>` : ''}${brandLogo ? `<img alt="" src="${esc(brandLogo)}" style="height:${brandSize}px;max-width:${brandSize * 5}px">` : ''}</div>` : '') + `</div></div>${hasVcf ? ANDROID_HINT : ''}</body></html>`;
 }
 
 // Chrome on Android never opens a vCard straight into Contacts: it always downloads it first.

@@ -32,6 +32,12 @@ module.exports = {
   async recentClicks(accountId, limit) {
     return db.events.find({ a: accountId, k: 'click' }, { projection: { _id: 0 } }).sort({ t: -1 }).limit(limit).toArray();
   },
+  async sinceMany(ids, t) {
+    return db.events.find({ a: { $in: ids }, t: { $gte: t } }, { projection: { _id: 0, t: 1, k: 1 } }).toArray();
+  },
+  async recentClicksMany(ids, limit) {
+    return db.events.find({ a: { $in: ids }, k: 'click' }, { projection: { _id: 0 } }).sort({ t: -1 }).limit(limit).toArray();
+  },
   async totals() {
     return db.stats.find({}).toArray();
   },

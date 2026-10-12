@@ -51,6 +51,7 @@ export async function newAccount() {
   if (!account) return;
   toast(account.slug === slugify(account.profile.name) ? 'Account created' : `Account created at /${account.slug}`);
   navigate('/edit/' + account.id);
+  if (account.login === undefined) toast('No sign-in was created: the server is running an older version. Redeploy the server.', { error: true, ms: 8000 });
   if (account.login) showLoginDetails('Their sign-in details', 'Send this to the card owner so they can see their statistics.', [{ name: account.profile.name, ...account.login }]);
 }
 

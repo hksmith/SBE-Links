@@ -7,6 +7,9 @@ const accounts = require('../repositories/accounts');
 const usersRepo = require('../repositories/users');
 const vcard = require('../services/vcard');
 const owners = require('../services/owners');
+const pages = require('../services/pages');
+const companiesRepo = require('../repositories/companies');
+const companyRoutes = require('./companies');
 const events = require('../repositories/events');
 const stats = require('../services/stats');
 const media = require('../services/media');
@@ -19,7 +22,7 @@ async function freeSlug(wanted) {
   let slug = slugify(wanted) || 'card';
   if (slug.length < 2) slug += '-1';
   const base = slug;
-  for (let i = 2; RESERVED.includes(slug) || (await accounts.slugTaken(slug)); i++) slug = `${base}-${i}`;
+  for (let i = 2; RESERVED.includes(slug) || !(await pages.topSlugFree(slug)); i++) slug = `${base}-${i}`;
   return slug;
 }
 
@@ -60,18 +63,29 @@ module.exports = router => {
   });
 
   router.get('/api/accounts', async (req, res) => {
-    const [list, st] = await Promise.all([accounts.list(), stats.listStats()]);
-    json(res, list.filter(a => auth.canSee(req._user, a.id)).map(a => ({
+    const admin = auth.isAdmin(req._user);
+    const [list, st, logins, cos] = await Promise.all([accounts.list(), stats.listStats(), admin ? owners.loginsByAccount() : {}, companiesRepo.list()]);
+    const co = Object.fromEntries(cos.map(c => [c.id, c]));
+    json(res, list.filter(a => auth.canSee(req._user, a)).map(a => ({
       id: a.id, slug: a.slug, name: a.profile.name, title: a.profile.title, company: a.profile.company,
+      companyId: a.company || null, path: pages.pathOf(a, co[a.company]),
       photo: a.profile.photo || '', created: a.created, ...(st[a.id] || stats.blank()),
+      ...(admin ? { login: logins[a.id] || null } : {}), // admins: the card owner's sign-in
     })));
   });
 
   router.get('/api/accounts/:id', async (req, res, { params }) => {
     const a = await accounts.get(params.id);
-    if (!a || !auth.canSee(req._user, a.id)) return json(res, { error: 'nf' }, 404);
-    json(res, { ...a, stats: await stats.detail(a) });
+    if (!a || !auth.canSee(req._user, a)) return json(res, { error: 'nf' }, 404);
+    const c = a.company ? await companiesRepo.get(a.company) : null;
+    // A company card is shown with the company's design (unless it has its own) and logo.
+    json(res, {
+      ...pages.inherit(a, c), fields: a.fields || {}, ownDesign: !!a.ownDesign, path: pages.pathOf(a, c),
+      companyInfo: c ? { id: c.id, name: c.name, slug: c.slug } : null, stats: await stats.detail(a),
+    });
   });
+
+  companyRoutes.forViewers(router);
 
   router.get('/api/icons', (req, res) => json(res, ICONS, 200, { 'Cache-Control': 'max-age=3600' }));
   router.get('/api/brand', async (req, res) => json(res, await brand.get()));
@@ -136,15 +150,14 @@ module.exports = router => {
   });
 
   // Creates a view-only login for every card that doesn't have one yet (e.g. cards made before this feature).
-  router.post('/api/owner-logins', async (req, res) => {
-    const [list, users] = await Promise.all([accounts.list(), usersRepo.list()]);
-    const has = new Set(users.map(u => u.owner).filter(Boolean));
-    const created = [];
-    for (const a of list) {
-      if (has.has(a.id)) continue;
-      created.push({ name: a.profile.name, slug: a.slug, ...(await owners.createFor(a)) });
-    }
-    json(res, created);
+  router.post('/api/owner-logins', async (req, res) => json(res, await owners.createMissing()));
+
+  // Creates the owner's sign-in for one card (e.g. after it was deleted). 409 if it already has one.
+  router.post('/api/accounts/:id/login', async (req, res, { params }) => {
+    const a = await accounts.get(params.id);
+    if (!a) return json(res, { error: 'nf' }, 404);
+    if ((await owners.loginsByAccount())[a.id]) return json(res, { error: 'exists', message: 'This card already has a sign-in.' }, 409);
+    json(res, await owners.createFor(a), 201);
   });
 
   router.post('/api/accounts', async (req, res) => {
@@ -173,7 +186,13 @@ module.exports = router => {
     const b = await readJson(req);
     if (!b) return json(res, { error: 'bad' }, 400);
     const a = clean(b, old);
-    if (a.slug !== old.slug && (await accounts.slugTaken(a.slug, a.id))) a.slug = old.slug;
+    if (old.company) {
+      // Company card: the logo always comes from the company; the design too unless it has its own.
+      a.company = old.company;
+      a.ownDesign = !!b.ownDesign;
+      for (const k of pages.LOGO_KEYS) a.profile[k] = k === 'logo' ? '' : old.profile[k];
+      if (a.slug !== old.slug && (await accounts.slugTaken(a.slug, a.id, old.company))) a.slug = old.slug;
+    } else if (a.slug !== old.slug && !(await pages.topSlugFree(a.slug, a.id))) a.slug = old.slug;
     await media.ingestAccount(a);
     try {
       await accounts.replace(a);
@@ -182,7 +201,7 @@ module.exports = router => {
       a.slug = old.slug;
       await accounts.replace(a);
     }
-    json(res, { ok: true, slug: a.slug });
+    json(res, { ok: true, slug: a.slug, path: await pages.pathFor(a) });
   });
 
   router.delete('/api/accounts/:id', async (req, res, { params }) => {
@@ -218,12 +237,25 @@ module.exports = router => {
     json(res, r);
   });
 
+  // Live preview of what is being edited: kind = 'account' (a card), 'page' (a company page) or 'template'
+  // (a company's card design, shown with its sample details).
   router.post('/api/preview', async (req, res) => {
     const b = await readJson(req);
     if (!b) return json(res, { error: 'bad' }, 400);
     const a = clean(b, { id: S(b.id, 20) || 'x', slug: '', created: 0 });
-    html(res, renderPage(a, { src: 'preview', preview: true, brand: await brand.get() }));
+    const opts = { src: 'preview', preview: true, brand: await brand.get() };
+    const c = b.kind === 'page' || b.kind === 'template' ? await companiesRepo.get(b.id) : b.company ? await companiesRepo.get(b.company) : null;
+    if (b.kind === 'page' && c) {
+      const draft = { ...c, theme: a.theme, showTeam: b.showTeam !== false, page: { profile: a.profile, fields: a.fields, blocks: a.blocks } };
+      const team = draft.showTeam ? (await accounts.listByCompany(c.id)).map(m => ({ name: m.profile.name, title: m.profile.title, photo: m.profile.photo, href: `/${c.slug}/${m.slug}` })) : null;
+      return html(res, renderPage(pages.companyForDisplay(draft), { ...opts, team }));
+    }
+    if (b.kind === 'template' && c) return html(res, renderPage(pages.forDisplay({ ...a, company: c.id, ownDesign: true }, c), opts));
+    if (c) return html(res, renderPage(pages.forDisplay({ ...a, company: c.id, ownDesign: !!b.ownDesign }, c), opts));
+    html(res, renderPage(pages.forDisplay(a, null), opts));
   });
+
+  companyRoutes.forAdmins(router);
 
   router.all('/api/*', (req, res) => json(res, { error: 'nf' }, 404));
 };

@@ -56,4 +56,13 @@ function sendStatic(res, root, relPath, { cache = 'no-cache' } = {}) {
   });
 }
 
-module.exports = { json, html, redirect, notFound, readJson, sendStatic };
+// The site address as the visitor sees it (also behind Vercel / Caddy, which pass the original host on).
+const origin = req => `${String(req.headers['x-forwarded-proto'] || 'http').split(',')[0]}://${String(req.headers['x-forwarded-host'] || req.headers.host).split(',')[0]}`;
+
+function sendFile(res, buf, name, type) {
+  res.writeHead(200, { 'Content-Type': type, 'Content-Length': buf.length, 'Cache-Control': 'no-store',
+    'Content-Disposition': `attachment; filename="${name.replace(/[^\w.-]+/g, '_')}"; filename*=UTF-8''${encodeURIComponent(name)}` });
+  res.end(buf);
+}
+
+module.exports = { origin, sendFile, json, html, redirect, notFound, readJson, sendStatic };

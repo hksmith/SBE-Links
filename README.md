@@ -49,12 +49,13 @@ sbpo-link-tree/
 
 | Collection | What it holds |
 |---|---|
-| `accounts` | One document per person (`_id` = account id, unique `slug`), profile, theme, blocks |
+| `accounts` | One document per person (`_id` = account id), profile, theme, blocks; company cards also have `company`, `ownDesign` and `fields` (phone, email, …). `slug` is unique among individual cards and inside each company |
 | `events` | Every page view and link click (`a` account, `k` view/click, `src`, `dev`, `t`) |
 | `stats` | Running totals per account so the dashboard loads instantly |
 | `media` | Uploaded images (photos, logos, gallery, icons), referenced as `/media/<id>` |
 | `settings` | Branding (footer logo, its size, footer text) and the session-signing secret |
 | `users` | People who can sign in besides the main admin: role (`admin` / `viewer`), which cards a viewer can see, hashed password |
+| `companies` | One document per company: page address, shared design (theme), company page (logo, details, links), card template |
 
 ## Running it
 
@@ -107,11 +108,35 @@ Every card can have its own **view-only sign-in** for the person it belongs to, 
 
 - **New account** has a tick box (on by default): *Let them see their own statistics*. It creates a viewer whose **username is the card's page address** (e.g. `yiha-yimam`), who can see **only that card**, with the shared first-time password from `DEFAULT_USER_PASSWORD` in `server/.env` (default `Welcome@123`). A box then shows the sign-in details with a **Copy message** button to send to the person.
 - The first time they sign in with that password they must **choose their own password** before they can see anything (the server refuses everything else until they do, and won't accept the shared password as the new one).
-- **Users → Create sign-ins for N cards without one** does the same for cards made earlier. Running it again skips cards that already have one.
-- **Users → Reset password** puts someone back on the shared first-time password (signed out at once, must choose a new one again). Card owners who haven't signed in yet show **Not signed in yet**.
+- **Cards made before this feature** get their sign-ins automatically the first time the updated server starts (once only, so a sign-in you delete on purpose isn't brought back).
+- Each card on the dashboard has a **Sign-in** button: **Sign-in details** (orange) = they haven't signed in yet, click to see/copy the message again; **Signed in ✓** = they chose their own password (click to reset it); **Create sign-in** = the card has none.
+- **Reset password** (on the card, or under Users) puts someone back on the shared first-time password (signed out at once, must choose a new one again). Card owners who haven't signed in yet show **Not signed in yet**.
 - Deleting a card also deletes its owner's sign-in.
 
 Changing someone's role takes effect immediately; changing their password signs them out everywhere. Everyone except the main admin can change their own password from the menu under their name.
+
+## Companies
+
+For a company that wants cards for its people, click **New company** (top bar or dashboard). A company has:
+
+- **A company page** at `/<company>` (e.g. `/acme`): the company logo large in the center, name, tagline, about, company links
+  (website, phone, email, address — filled from **Company details**) and, if switched on, the list of its people.
+  Open it with **Company page & logo**. The logo set here is the logo of **every card** of the company; cards can’t change it.
+- **One shared design** (**Card design** → Design tab, also on the company page): every card follows it, and changing it
+  changes all of them. One card can still get **its own design** (its Design tab → *Give this card its own design*) and
+  go back to the company design at any time.
+- **A card template** (**Card design** → Card content): the links every new card starts with. Links can use the person’s details:
+  `tel:{phone}`, `mailto:{email}`, `https://wa.me/{whatsapp}`, `https://linkedin.com/in/{linkedin}`, `https://{website}`, `{address}`,
+  or any extra Excel column (e.g. `https://t.me/{telegram}`). A link whose detail is empty is hidden on that card.
+  The **Save My Contact** button can be *built automatically* from the person’s details (no .vcf to upload).
+- **People’s cards** at `/<company>/<person>` (NFC: `/n/<company>/<person>`). Add them one by one (**+ Add card**: only the
+  person’s details) or from Excel (**Import from Excel**: download the template, one row per person, only *Full name* is
+  required; rows already imported are skipped). After an import the **sign-ins Excel file** downloads automatically: every
+  username and first-time password, card link and NFC link, to send to the company. **Sign-ins (Excel)** downloads it again any time.
+- **A company admin sign-in** (username = the company address): view only, the company totals and combined statistics,
+  and each person’s card. Card owners’ usernames are `<company>.<person>` (e.g. `acme.abebe-kebede`).
+
+Deleting a company deletes its page, all its cards, their statistics and sign-ins.
 
 ## Footer & branding
 
@@ -162,7 +187,8 @@ Existing accounts (same id) are skipped, so running it twice is safe.
 |---|---|
 | `/` | Redirects to `/admin` |
 | `/admin` | Admin app (login page when signed out). Screens: `#/`, `#/users`, `#/edit/<id>`, `#/stats/<id>` |
-| `/<slug>` | Public profile page |
+| `/<slug>` | Public profile page, or a company page |
+| `/<company>/<slug>` | A card of a company (`/n/<company>/<slug>` for NFC) |
 | `/n/<slug>` | Same page, counted as an NFC tap (write this to the card) |
 | `/go/<account>/<link>` | Tracked redirect for a link button |
 | `/vcf/<account>/<block>` | “Save My Contact”: the vCard with contact headers (counted as a click) |

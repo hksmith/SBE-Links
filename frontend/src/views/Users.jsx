@@ -13,8 +13,12 @@ import { showLoginDetails } from './loginDetails.jsx';
 
 const ROLE = { admin: 'Admin', viewer: 'Viewer' };
 
-function accessText(u, list) {
+function accessText(u, list, cos = []) {
   if (u.role === 'admin') return 'Full access to everything';
+  if (u.company) {
+    const c = cos.find(x => x.id === u.company);
+    return `Company admin · statistics of ${c ? c.name : 'the company'} and all its cards`;
+  }
   if (u.owner) {
     const a = list.find(x => x.id === u.owner);
     return a ? `Card owner · statistics of ${a.name || '/' + a.slug} only` : 'Card owner';
@@ -29,8 +33,8 @@ export function Users() {
   const [data, setData] = useState(null);
 
   const load = useCallback(async () => {
-    const [users, list] = await Promise.all([getJson('/api/users'), getJson('/api/accounts')]);
-    setData({ users, list });
+    const [users, list, cos] = await Promise.all([getJson('/api/users'), getJson('/api/accounts'), getJson('/api/companies').catch(() => [])]);
+    setData({ users, list, cos });
   }, []);
   useEffect(() => { load().catch(() => {}); }, [load]);
 
@@ -48,17 +52,6 @@ export function Users() {
       load();
     } catch (e) { toast(e.message, { error: true }); }
   };
-  const missing = data ? data.list.filter(a => !data.users.some(u => u.owner === a.id)) : [];
-  const createMissing = async () => {
-    if (!(await confirmDialog({ title: `Create ${missing.length} sign-in${missing.length > 1 ? 's' : ''}?`,
-      text: `Every card without one gets a view-only sign-in (username = its page address) with the standard first-time password. ${missing.map(a => a.name || a.slug).join(', ')}.`,
-      confirm: 'Create sign-ins', danger: false, icon: 'people' }))) return;
-    try {
-      const made = await send('/api/owner-logins', 'POST', undefined, 'Could not create the sign-ins.');
-      load();
-      if (made.length) showLoginDetails(`${made.length} sign-in${made.length > 1 ? 's' : ''} created`, 'Send each card owner their message.', made);
-    } catch (e) { toast(e.message, { error: true }); }
-  };
   const remove = async u => {
     if (!(await confirmDialog({ title: `Delete ${u.name}?`, text: `@${u.username} will no longer be able to sign in.`, confirm: 'Delete user' }))) return;
     const r = await api('/api/users/' + encodeURIComponent(u.username), 'DELETE');
@@ -73,11 +66,10 @@ export function Users() {
       <div className="hero">
         <button onClick={() => navigate('/')}><Icon k="back" size={14} /> Accounts</button>
         <h1 style={{ marginTop: 12 }}>Users</h1>
-        <p>Admins can change everything. Viewers can only see statistics — nothing else. Every card owner gets their own view-only sign-in.</p>
+        <p>Admins can change everything. Viewers can only see statistics — nothing else. Every card owner gets their own view-only sign-in — see the <b>Sign-in</b> button on each card.</p>
       </div>
       <div className="usr-actions">
         <button className="blk" onClick={() => edit(null)} disabled={!data}>+ Add user</button>
-        {missing.length > 0 && <button className="blk" onClick={createMissing}>Create sign-ins for {missing.length} card{missing.length > 1 ? 's' : ''} without one</button>}
       </div>
       <div>
         {data && data.users.map(u => (
@@ -87,7 +79,7 @@ export function Users() {
               <b>{u.name}</b> <span className={'role ' + u.role}>{ROLE[u.role]}</span>{u.username === me.username && <> <span className="tag">You</span></>}
               {u.mustChange && <> <span className="tag warn" title="Still on the first-time password">Not signed in yet</span></>}<br />
               <small>@{u.username}{u.builtin ? ' · set in server/.env' : ''}</small><br />
-              <small>{accessText(u, data.list)}</small>
+              <small>{accessText(u, data.list, data.cos)}</small>
             </div>
             {!u.builtin && <>
               <button onClick={() => edit(u)}>Edit</button>
@@ -115,8 +107,9 @@ function UserDialog({ user: u, list, onClose }) {
 
   const submit = async () => {
     const accounts = scope === 'all' ? 'all' : sel.filter(id => list.some(a => a.id === id));
-    if (role === 'viewer' && accounts !== 'all' && !accounts.length) throw new Error('Pick at least one card, or choose “All cards”.');
+    if (role === 'viewer' && !(u && u.company) && accounts !== 'all' && !accounts.length) throw new Error('Pick at least one card, or choose “All cards”.');
     const body = { name: name.trim(), role, accounts, password };
+    if (u && u.company) delete body.accounts; // a company admin's access comes from the company
     if (!u) {
       body.username = username.trim().toLowerCase();
       if (!body.username) { userRef.current.focus(); throw new Error('Please enter a username.'); }
@@ -138,7 +131,8 @@ function UserDialog({ user: u, list, onClose }) {
         <label className="opt"><input type="radio" name="role" checked={role === 'viewer'} onChange={() => setRole('viewer')} /><span><b>Viewer</b><small>Can only see statistics. Can’t create, edit or delete anything.</small></span></label>
         <label className="opt"><input type="radio" name="role" checked={role === 'admin'} onChange={() => setRole('admin')} /><span><b>Admin</b><small>Full access: cards, design, footer logo and users.</small></span></label>
       </div>
-      {role === 'viewer' && (
+      {role === 'viewer' && u && u.company && <small className="dlg-hint">Company admin: sees the statistics of their company and all its cards.</small>}
+      {role === 'viewer' && !(u && u.company) && (
         <div className="fld"><label>Statistics they can see</label>
           <label className="opt"><input type="radio" name="scope" checked={scope === 'all'} onChange={() => setScope('all')} /><span><b>All cards</b><small>Including cards added later.</small></span></label>
           <label className="opt"><input type="radio" name="scope" checked={scope === 'some'} onChange={() => setScope('some')} /><span><b>Only these cards</b></span></label>

@@ -1,4 +1,6 @@
-// State of the account editor: the account being edited, autosave, undo/redo history, live preview and uploads.
+// State of the editor: the document being edited, autosave, undo/redo history, live preview and uploads.
+// kind: 'account' (a card), 'page' (a company page) or 'template' (a company's card design).
+// All three have the same shape ({ id, profile, fields, theme, blocks }), so the same screens edit them.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, getJson, send, uploadImage } from '../lib/api.js';
 import { setp, toData, imageSize, pickFiles } from '../lib/utils.js';
@@ -6,8 +8,11 @@ import { toast } from '../lib/toast.js';
 import { navigate } from '../lib/router.js';
 
 const clone = o => JSON.parse(JSON.stringify(o));
+const NO_STATS = { views: 0, taps: 0, clicks: 0, last: 0, days: [], byLink: {}, dev: {}, src: {}, recent: [] };
+const urlOf = (id, kind) => (kind === 'page' || kind === 'template' ? `/api/companies/${id}/${kind}` : '/api/accounts/' + id);
 
-export function useEditor(id) {
+export function useEditor(id, kind = 'account') {
+  const URL = urlOf(id, kind);
   const [cur, setCurState] = useState(null);
   const [stats, setStats] = useState(null);
   const [status, setStatus] = useState('Saved ✓');
@@ -35,14 +40,14 @@ export function useEditor(id) {
     const v = version.current;
     setStatus('Saving…');
     try {
-      const j = await send('/api/accounts/' + c.id, 'PUT', c);
-      if (curRef.current && j.slug && j.slug !== curRef.current.slug) setCur({ ...curRef.current, slug: j.slug });
+      const j = await send(URL, 'PUT', c);
+      if (curRef.current && j.slug && (j.slug !== curRef.current.slug || j.path !== curRef.current.path)) setCur({ ...curRef.current, slug: j.slug, path: j.path });
       if (version.current === v) { dirty.current = false; setStatus('Saved ✓'); } // nothing changed while saving
       else setStatus('Unsaved…');
     } catch {
       setStatus('Save failed');
     }
-  }, []);
+  }, [URL]);
 
   // Call after every change: refreshes the preview, records undo history and saves shortly after.
   const changed = useCallback(() => {
@@ -79,16 +84,16 @@ export function useEditor(id) {
   }, [refreshPreview, save]);
 
   const reloadStats = useCallback(async () => {
-    try { setStats((await getJson('/api/accounts/' + id)).stats); } catch { /* keep old numbers */ }
-  }, [id]);
+    try { setStats((await getJson(URL)).stats || NO_STATS); } catch { /* keep old numbers */ }
+  }, [URL]);
 
   // Load the account; save pending changes when leaving the editor.
   useEffect(() => {
     let live = true;
-    getJson('/api/accounts/' + id).then(j => {
+    getJson(URL).then(j => {
       if (!live) return;
       const { stats: s, ...acc } = j;
-      setStats(s); setCur(acc); setHist({ list: [JSON.stringify(acc)], i: 0 });
+      setStats(s || NO_STATS); setCur({ kind, ...acc }); setHist({ list: [JSON.stringify(acc)], i: 0 });
       refreshPreview();
     }).catch(() => { if (live) { toast('That account was not found', { error: true }); navigate('/'); } });
     const T = timers.current;
@@ -97,7 +102,7 @@ export function useEditor(id) {
       Object.values(T).forEach(clearTimeout);
       if (dirty.current) save();
     };
-  }, [id, refreshPreview, save]);
+  }, [URL, kind, refreshPreview, save]);
 
   // Warn before closing the tab with unsaved changes.
   useEffect(() => {

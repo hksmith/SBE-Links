@@ -242,11 +242,42 @@ test('card owners: a view-only login is made with each card and must change the 
   assert.ok(made.every(x => x.password === DEF));
   assert.deepStrictEqual(await (await req('POST', '/api/owner-logins')).json(), [], 'running it again does nothing');
 
+  // admins see each card's sign-in on the dashboard list; the password only while it's still the generic one
+  const listed = await (await req('GET', '/api/accounts')).json();
+  const lt = listed.find(x => x.id === twin.id);
+  assert.deepStrictEqual(lt.login, { username: twin.login.username, mustChange: true, password: DEF });
+  assert.strictEqual(listed.find(x => x.id === a.id).login.password, DEF, 'reset back to generic');
+  r = await req('POST', '/login', { u: 'owner-person', p: DEF });
+  oc = r.headers.get('set-cookie').split(';')[0];
+  oc = (await asOwner('POST', '/api/me/password', { next: 'mine-456' })).headers.get('set-cookie').split(';')[0];
+  const after = (await (await req('GET', '/api/accounts')).json()).find(x => x.id === a.id).login;
+  assert.deepStrictEqual(after, { username: 'owner-person', mustChange: false }, 'own password is never shown');
+  assert.ok(!('login' in (await (await asOwner('GET', '/api/accounts')).json())[0]), 'viewers never get login info');
+  assert.strictEqual((await req('POST', `/api/accounts/${a.id}/login`)).status, 409, 'already has one');
+
   // deleting the card removes its owner's login
   await req('DELETE', '/api/accounts/' + a.id);
   users = await (await req('GET', '/api/users')).json();
   assert.ok(!users.some(u => u.username === 'owner-person'));
   assert.strictEqual((await req('POST', '/login', { u: 'owner-person', p: DEF })).status, 401);
+});
+
+test('existing cards get their sign-ins automatically, once', async () => {
+  const owners = require('../src/services/owners');
+  const settings = require('../src/repositories/settings');
+  const usersRepo = require('../src/repositories/users');
+  await settings.set('ownerLoginsBackfilled', 0);
+  const old = await (await req('POST', '/api/accounts', { name: 'Old Card', login: false })).json();
+  await owners.backfillOnce();
+  let l = (await (await req('GET', '/api/accounts')).json()).find(x => x.id === old.id).login;
+  assert.strictEqual(l.username, 'old-card');
+  // deleted on purpose: not recreated by a later start, but can be made again from the card
+  await usersRepo.remove('old-card');
+  assert.strictEqual(await owners.backfillOnce(), 0);
+  assert.strictEqual((await (await req('GET', '/api/accounts')).json()).find(x => x.id === old.id).login, null);
+  const r = await req('POST', `/api/accounts/${old.id}/login`);
+  assert.strictEqual(r.status, 201);
+  assert.strictEqual((await r.json()).username, 'old-card');
 });
 
 test('save contact: vCard served with contact headers (upload and hosted link)', async () => {

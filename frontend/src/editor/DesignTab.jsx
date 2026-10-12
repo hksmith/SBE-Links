@@ -1,6 +1,7 @@
 // "Design" tab: theme presets, header layout, background, colors, fonts, text styles, block style.
 import { PRE, FP, BS, THEMES, mkT, TXK } from '../lib/constants.js';
 import { Icon } from '../components/Icon.jsx';
+import { navigate } from '../lib/router.js';
 import { useEd, Seg, Slider, Switch, Color, FontSelect, Tabs } from './fields.jsx';
 
 const Card = ({ title, children }) => <div className="card"><h2>{title}</h2>{children}</div>;
@@ -15,10 +16,30 @@ export function DesignTab({ thTab, setThTab, bsTab, setBsTab }) {
   const t = cur.theme, tx = t.tx || {};
   const theme = fn => update(d => fn(d.theme));
 
+  const co = cur.companyInfo;
+  if (cur.company && !cur.ownDesign) return (
+    <div className="card inherit">
+      <h2><Icon k="building" size={15} /> Uses the {co ? co.name : 'company'} design</h2>
+      <p>This card follows the company’s shared design, so a change to the company design shows here too.</p>
+      <div className="row">
+        <button className="pri" onClick={() => update(d => { d.ownDesign = true; })}>Give this card its own design</button>
+        {co && <button onClick={() => navigate(`/ctpl/${co.id}`)}>Edit the company design</button>}
+      </div>
+      <small className="hint">Its own design starts as a copy of the company design. You can switch back at any time.</small>
+    </div>
+  );
+
   const colorPreset = Object.keys(PRE).find(k => Object.keys(PRE[k]).every(x => PRE[k][x] == t[x])) || 'Custom';
   const fontPreset = Object.keys(FP).find(k => FP[k][0] === t.disp && FP[k][1] === t.body) || 'Custom';
 
   return <>
+    {cur.company && <div className="note row" style={{ justifyContent: 'space-between' }}>
+      <span>This card has its <b>own design</b>; changes to the company design don’t reach it.</span>
+      <button onClick={() => update(d => { d.ownDesign = false; })}>Use the company design again</button>
+    </div>}
+    {(cur.kind === 'page' || cur.kind === 'template') && <div className="note">
+      This design is shared by the company page and every card of {co ? co.name : 'the company'} (except cards given their own design). Changes apply to all of them.
+    </div>}
     <Card title="Theme">
       <Tabs value={thTab} options={Object.keys(THEMES)} onPick={setThTab} />
       <div className="tcs">
