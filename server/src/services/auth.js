@@ -34,7 +34,12 @@ const checkPassword = (pass, u) => !!u.salt && same(hashPassword(pass, u.salt).h
 const builtinUser = () => ({ username: config.adminUser, name: 'Main admin', role: 'admin', accounts: 'all', builtin: true, ver: 0 });
 
 // What the browser is allowed to see about a user.
-const publicUser = u => ({ username: u.username, name: u.name || u.username, role: u.role, accounts: u.accounts, builtin: !!u.builtin, created: u.created || 0 });
+// mustChange: still on the generic first-time password, has to pick their own before seeing anything.
+// owner: the card this login was created for (card-owner logins are removed together with their card).
+const publicUser = u => ({
+  username: u.username, name: u.name || u.username, role: u.role, accounts: u.accounts, builtin: !!u.builtin,
+  mustChange: !!u.mustChange, owner: u.owner || null, created: u.created || 0,
+});
 
 function makeCookie(req, u) {
   const exp = String(Date.now() + WEEK);

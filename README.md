@@ -101,6 +101,16 @@ Signed in as an admin, click **Users** in the top bar to add more people:
 | **Viewer** | Only sees statistics (dashboard totals and each card's Analytics). No editing, no creating, no deleting, no settings. Can be limited to **all cards** or **only selected cards**. |
 
 The rules are enforced by the server, not just hidden in the screen: a viewer gets `403` from every route that changes something, and `404` for cards they were not given.
+### Card owners see their own statistics
+
+Every card can have its own **view-only sign-in** for the person it belongs to, so you don't have to add users by hand:
+
+- **New account** has a tick box (on by default): *Let them see their own statistics*. It creates a viewer whose **username is the card's page address** (e.g. `yiha-yimam`), who can see **only that card**, with the shared first-time password from `DEFAULT_USER_PASSWORD` in `server/.env` (default `Welcome@123`). A box then shows the sign-in details with a **Copy message** button to send to the person.
+- The first time they sign in with that password they must **choose their own password** before they can see anything (the server refuses everything else until they do, and won't accept the shared password as the new one).
+- **Users → Create sign-ins for N cards without one** does the same for cards made earlier. Running it again skips cards that already have one.
+- **Users → Reset password** puts someone back on the shared first-time password (signed out at once, must choose a new one again). Card owners who haven't signed in yet show **Not signed in yet**.
+- Deleting a card also deletes its owner's sign-in.
+
 Changing someone's role takes effect immediately; changing their password signs them out everywhere. Everyone except the main admin can change their own password from the menu under their name.
 
 ## Footer & branding
@@ -141,6 +151,7 @@ Existing accounts (same id) are skipped, so running it twice is safe.
 | `MONGODB_URI` | `mongodb://127.0.0.1:27017/sbpo-link-tree` | Local MongoDB or Atlas connection string |
 | `MONGODB_DB` | database in the URI | Override the database name |
 | `ADMIN_USER` / `ADMIN_PASSWORD` | `admin` / random (printed on start) | Admin login |
+| `DEFAULT_USER_PASSWORD` | `Welcome@123` | Shared first-time password for card owners' view-only sign-ins (they must change it on first sign-in) |
 | `TRUST_PROXY` | off | Set to `1` behind Caddy/Nginx |
 | `LEGACY_DATA_FILE` | `server/data/legacy-data.json` | Old database to import into an empty MongoDB |
 | `CLIENT_DIR` | `client/dist` | Folder with the built admin app |

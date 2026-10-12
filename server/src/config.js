@@ -31,6 +31,8 @@ module.exports = {
   adminPassword,
   generatedPassword,
   trustProxy: !!env.TRUST_PROXY,
+  // Shared first-time password for card owners' view-only logins. They must replace it the first time they sign in.
+  defaultUserPassword: env.DEFAULT_USER_PASSWORD && env.DEFAULT_USER_PASSWORD.length >= 6 ? env.DEFAULT_USER_PASSWORD : 'Welcome@123',
   // Old single-file database. Imported automatically the first time the MongoDB database is empty.
   legacyDataFile: env.LEGACY_DATA_FILE || path.join(ROOT, 'data', 'legacy-data.json'),
   // The built admin app (npm run build -> client/dist).

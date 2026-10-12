@@ -135,7 +135,7 @@ test('users: viewers only see statistics, admins manage users', async () => {
   assert.strictEqual((await req('POST', '/api/users', { username: 'sales', password: 'secret1' })).status, 409);
 
   const users = await (await req('GET', '/api/users')).json();
-  assert.deepStrictEqual(users.map(x => x.username), ['admin', 'sales']);
+  assert.deepStrictEqual(users.filter(x => !x.owner).map(x => x.username), ['admin', 'sales']);
 
   // sign in as the viewer
   const login = await req('POST', '/login', { u: 'sales', p: 'secret1' });
@@ -178,6 +178,75 @@ test('users: viewers only see statistics, admins manage users', async () => {
   assert.strictEqual((await req('PUT', '/api/users/sales', { role: 'viewer' }, { cookie: vc2 })).status, 400, 'cannot demote yourself');
   assert.strictEqual((await req('DELETE', '/api/users/sales')).status, 200);
   assert.strictEqual((await req('GET', '/api/me', null, { cookie: vc2 })).status, 401, 'deleted user signed out');
+});
+
+test('card owners: a view-only login is made with each card and must change the generic password', async () => {
+  const DEF = require('../src/config').defaultUserPassword;
+  let r = await req('POST', '/api/accounts', { name: 'Owner Person' });
+  const a = await r.json();
+  assert.deepStrictEqual(a.login, { username: 'owner-person', password: DEF });
+  const other = await (await req('POST', '/api/accounts', { name: 'Someone Else' })).json();
+  const none = await (await req('POST', '/api/accounts', { name: 'No Login', login: false })).json();
+  assert.strictEqual(none.login, null);
+
+  let users = await (await req('GET', '/api/users')).json();
+  const ou = users.find(u => u.username === 'owner-person');
+  assert.strictEqual(ou.role, 'viewer');
+  assert.deepStrictEqual(ou.accounts, [a.id]);
+  assert.strictEqual(ou.owner, a.id);
+  assert.strictEqual(ou.mustChange, true);
+
+  // first sign-in with the generic password: only allowed to choose a new one
+  r = await req('POST', '/login', { u: 'owner-person', p: DEF });
+  assert.strictEqual(r.status, 200);
+  assert.strictEqual((await r.json()).user.mustChange, true);
+  let oc = r.headers.get('set-cookie').split(';')[0];
+  const asOwner = (m, url, body) => req(m, url, body, { cookie: oc });
+  assert.strictEqual((await (await asOwner('GET', '/api/me')).json()).mustChange, true);
+  assert.strictEqual((await asOwner('GET', '/api/accounts')).status, 403, 'locked until password changed');
+  assert.strictEqual((await asOwner('GET', '/api/accounts/' + a.id)).status, 403);
+  assert.strictEqual((await asOwner('GET', '/api/brand')).status, 200);
+  assert.strictEqual((await asOwner('POST', '/api/me/password', { next: DEF })).status, 400, 'cannot keep the generic one');
+  assert.strictEqual((await asOwner('POST', '/api/me/password', { next: '123' })).status, 400);
+  r = await asOwner('POST', '/api/me/password', { next: 'mine-123' });
+  assert.strictEqual(r.status, 200);
+  oc = r.headers.get('set-cookie').split(';')[0];
+  assert.strictEqual((await (await asOwner('GET', '/api/me')).json()).mustChange, false);
+  const seen = await (await asOwner('GET', '/api/accounts')).json();
+  assert.deepStrictEqual(seen.map(x => x.id), [a.id], 'only their own card');
+  assert.strictEqual((await asOwner('GET', '/api/accounts/' + other.id)).status, 404);
+  assert.strictEqual((await asOwner('PUT', '/api/accounts/' + a.id, a)).status, 403, 'view only');
+  assert.strictEqual((await req('POST', '/login', { u: 'owner-person', p: DEF })).status, 401, 'generic password no longer works');
+  // from now on the current password is required to change it
+  assert.strictEqual((await asOwner('POST', '/api/me/password', { next: 'another1' })).status, 400);
+
+  // admin resets a forgotten password back to the generic one
+  assert.strictEqual((await asOwner('POST', '/api/users/owner-person/reset')).status, 403);
+  r = await req('POST', '/api/users/owner-person/reset');
+  assert.deepStrictEqual(await r.json(), { username: 'owner-person', password: DEF });
+  assert.strictEqual((await asOwner('GET', '/api/me')).status, 401, 'signed out after reset');
+  r = await req('POST', '/login', { u: 'owner-person', p: DEF });
+  oc = r.headers.get('set-cookie').split(';')[0];
+  assert.strictEqual((await asOwner('GET', '/api/accounts')).status, 403, 'must change again');
+
+  // same name twice: second login gets a free username
+  const twin = await (await req('POST', '/api/accounts', { name: 'Owner Person' })).json();
+  assert.notStrictEqual(twin.slug, a.slug);
+  assert.notStrictEqual(twin.login.username, 'owner-person');
+
+  // logins for older cards that don't have one yet
+  r = await req('POST', '/api/owner-logins');
+  const made = await r.json();
+  assert.ok(made.some(x => x.slug === none.slug), 'card created without a login gets one');
+  assert.ok(!made.some(x => x.slug === a.slug), 'cards that already have a login are skipped');
+  assert.ok(made.every(x => x.password === DEF));
+  assert.deepStrictEqual(await (await req('POST', '/api/owner-logins')).json(), [], 'running it again does nothing');
+
+  // deleting the card removes its owner's login
+  await req('DELETE', '/api/accounts/' + a.id);
+  users = await (await req('GET', '/api/users')).json();
+  assert.ok(!users.some(u => u.username === 'owner-person'));
+  assert.strictEqual((await req('POST', '/login', { u: 'owner-person', p: DEF })).status, 401);
 });
 
 test('save contact: vCard served with contact headers (upload and hosted link)', async () => {

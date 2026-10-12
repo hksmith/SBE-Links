@@ -6,6 +6,7 @@ const auth = require('../services/auth');
 const accounts = require('../repositories/accounts');
 const usersRepo = require('../repositories/users');
 const vcard = require('../services/vcard');
+const owners = require('../services/owners');
 const events = require('../repositories/events');
 const stats = require('../services/stats');
 const media = require('../services/media');
@@ -35,6 +36,12 @@ async function accessList(v) {
 module.exports = router => {
   router.all('/api/*', async (req, res) => ((await auth.currentUser(req)) ? false : json(res, { error: 'auth' }, 401)));
 
+  // Someone still on the generic first-time password may only choose a new one (plus what the app needs to load).
+  const FIRST_LOGIN_OK = new Set(['GET /api/me', 'POST /api/me/password', 'GET /api/icons', 'GET /api/brand']);
+  router.all('/api/*', (req, res, { url }) => (!req._user.mustChange || FIRST_LOGIN_OK.has(`${req.method === 'HEAD' ? 'GET' : req.method} ${url.pathname}`)
+    ? false
+    : json(res, { error: 'must_change', message: 'Please choose your own password first.' }, 403)));
+
   /* ---------- everyone who is signed in (admins and viewers) ---------- */
 
   router.get('/api/me', (req, res) => json(res, auth.publicUser(req._user)));
@@ -42,10 +49,12 @@ module.exports = router => {
   router.post('/api/me/password', async (req, res) => {
     const u = req._user, b = (await readJson(req, 1e4)) || {};
     if (u.builtin) return json(res, { error: 'builtin', message: 'The main admin password is set in server/.env (ADMIN_PASSWORD).' }, 400);
-    if (!auth.checkPassword(String(b.current ?? ''), u)) return json(res, { error: 'bad', message: 'Your current password is not correct.' }, 400);
+    // On the first sign-in they just typed the generic password, so it isn't asked for again.
+    if (!u.mustChange && !auth.checkPassword(String(b.current ?? ''), u)) return json(res, { error: 'bad', message: 'Your current password is not correct.' }, 400);
     const next = String(b.next ?? '');
     if (next.length < 6) return json(res, { error: 'short', message: 'Use at least 6 characters.' }, 400);
-    const fields = { ...auth.hashPassword(next), ver: (u.ver || 0) + 1 };
+    if (next === config.defaultUserPassword) return json(res, { error: 'default', message: 'Choose a password of your own, not the one you were given.' }, 400);
+    const fields = { ...auth.hashPassword(next), mustChange: false, ver: (u.ver || 0) + 1 };
     await usersRepo.update(u.username, fields);
     json(res, { ok: true }, 200, { 'Set-Cookie': auth.makeCookie(req, { ...u, ...fields }) });
   });
@@ -118,6 +127,26 @@ module.exports = router => {
     json(res, { ok: true });
   });
 
+  // Back to the shared first-time password; they must choose a new one at their next sign-in.
+  router.post('/api/users/:username/reset', async (req, res, { params }) => {
+    const u = await usersRepo.get(params.username);
+    if (!u) return json(res, { error: 'nf', message: 'The main admin is managed in server/.env.' }, 404);
+    if (u.username === req._user.username) return json(res, { error: 'self', message: 'Use “Change password” in your own menu instead.' }, 400);
+    json(res, await owners.resetToDefault(u));
+  });
+
+  // Creates a view-only login for every card that doesn't have one yet (e.g. cards made before this feature).
+  router.post('/api/owner-logins', async (req, res) => {
+    const [list, users] = await Promise.all([accounts.list(), usersRepo.list()]);
+    const has = new Set(users.map(u => u.owner).filter(Boolean));
+    const created = [];
+    for (const a of list) {
+      if (has.has(a.id)) continue;
+      created.push({ name: a.profile.name, slug: a.slug, ...(await owners.createFor(a)) });
+    }
+    json(res, created);
+  });
+
   router.post('/api/accounts', async (req, res) => {
     const b = (await readJson(req, 1e4)) || {};
     const name = S(b.name, 80).trim();
@@ -127,7 +156,9 @@ module.exports = router => {
       const a = newAccount(name, await freeSlug(b.slug || name));
       try {
         await accounts.insert(a);
-        return json(res, a, 201);
+        // Unless switched off, the card's owner gets a view-only login for its statistics.
+        const login = b.login === false ? null : await owners.createFor(a);
+        return json(res, { ...a, login }, 201);
       } catch (e) {
         if (e && e.code === 11000) continue; // slug taken by a parallel request, try the next one
         throw e;
@@ -159,6 +190,7 @@ module.exports = router => {
     if (!a) return json(res, { error: 'nf' }, 404);
     await accounts.remove(a.id);
     await events.removeFor(a.id);
+    await usersRepo.removeOwnedBy(a.id); // the owner's login has nothing left to show
     media.collectGarbage().catch(() => {});
     json(res, { ok: true });
   });
