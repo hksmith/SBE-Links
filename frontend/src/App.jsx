@@ -1,54 +1,54 @@
-// Session gate + routes. There is no separate /login route: when the server says 401 the login form
-// is shown in place, so after signing in you land back on whatever page you were opening.
-import { useCallback, useEffect, useState } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
-import { api, onSignedOut } from './api.js';
-import { IconsContext } from './icons.jsx';
-import { ToastProvider } from './components/Toast.jsx';
-import { ConfirmProvider } from './components/Dialog.jsx';
-import Login from './pages/Login.jsx';
-import Dashboard from './pages/Dashboard.jsx';
-import Editor from './pages/Editor.jsx';
+// Admin app root: loads the signed-in user + icon set, then shows the screen for the current #route.
+import { useEffect, useMemo, useState } from 'react';
+import { AppContext } from './AppContext.js';
+import { getJson } from './lib/api.js';
+import { loadIcons } from './lib/icons.js';
+import { useRoute, navigate } from './lib/router.js';
+import { Toasts } from './components/Toasts.jsx';
+import { DialogHost } from './components/Dialog.jsx';
+import { Dashboard } from './views/Dashboard.jsx';
+import { Users } from './views/Users.jsx';
+import { StatsView } from './views/StatsView.jsx';
+import { Editor } from './editor/Editor.jsx';
+
+const EMPTY_BRAND = { logo: '', logoSize: 18, text: '' };
 
 export default function App() {
-  const [auth, setAuth] = useState('loading'); // loading | in | out | error
-  const [icons, setIcons] = useState({});
+  const [me, setMe] = useState(null);
+  const [brand, setBrand] = useState(EMPTY_BRAND);
+  const [failed, setFailed] = useState(false);
+  const route = useRoute();
 
-  // /api/icons doubles as the "am I signed in?" probe: it needs a session and every page needs the icons.
-  const boot = useCallback(async () => {
-    setAuth('loading');
-    try { setIcons(await api('/api/icons')); setAuth('in'); }
-    catch (e) { setAuth(e.status === 401 ? 'out' : 'error'); }
+  useEffect(() => {
+    Promise.all([getJson('/api/me'), getJson('/api/icons').then(loadIcons), getJson('/api/brand').catch(() => EMPTY_BRAND)])
+      .then(([m, , b]) => { setMe(m); setBrand({ ...EMPTY_BRAND, ...b }); document.body.classList.toggle('viewer', m.role !== 'admin'); })
+      .catch(() => setFailed(true));
   }, []);
 
-  useEffect(() => { boot(); return onSignedOut(() => setAuth('out')); }, [boot]);
+  const isAdmin = !!me && me.role === 'admin';
+  const ctx = useMemo(() => ({ me, isAdmin, brand, setBrand }), [me, isAdmin, brand]);
 
-  const logout = useCallback(async () => {
-    try { await api('/logout', { method: 'POST' }); } catch { /* the probe below decides */ }
-    boot();
-  }, [boot]);
+  // Keep people on screens their role allows.
+  let { name, id } = route;
+  if (me && !isAdmin && (name === 'edit' || name === 'users')) { name = name === 'edit' && id ? 'stats' : ''; }
+  useEffect(() => {
+    if (me && name !== route.name) navigate(name ? `/${name}/${id ?? ''}` : '/');
+  }, [me, name, route.name, id]);
 
-  if (auth === 'loading') return <div className="boot" role="status">Loading…</div>;
-  if (auth === 'error') {
-    return (
-      <div className="boot">
-        <div><b>Can’t reach the server.</b><p>Check that the server is running and that the address in <code>vercel.json</code> (or <code>VITE_API_URL</code>) is correct.</p><button className="pri" onClick={boot}>Try again</button></div>
-      </div>
-    );
+  let screen = null;
+  if (failed) screen = <main><p style={{ color: 'var(--mut)' }}>Could not load the admin app. Check that the server is running, then reload.</p></main>;
+  else if (me) {
+    if (name === 'users') screen = <Users />;
+    else if (name === 'edit' && id) screen = <Editor key={id} id={id} />;
+    else if (name === 'stats' && id) screen = <StatsView key={id} id={id} />;
+    else screen = <Dashboard />;
   }
-  if (auth === 'out') return <Login onSignedIn={boot} />;
 
   return (
-    <IconsContext.Provider value={icons}>
-      <ToastProvider>
-        <ConfirmProvider>
-          <Routes>
-            <Route path="/" element={<Dashboard onLogout={logout} />} />
-            <Route path="/accounts/:id" element={<Editor />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </ConfirmProvider>
-      </ToastProvider>
-    </IconsContext.Provider>
+    <AppContext.Provider value={ctx}>
+      {screen}
+      <Toasts />
+      <DialogHost />
+    </AppContext.Provider>
   );
 }

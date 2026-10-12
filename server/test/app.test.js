@@ -2,6 +2,16 @@
 process.env.ADMIN_USER = 'admin';
 process.env.ADMIN_PASSWORD = 'test-pass';
 
+// A stand-in for the built admin app (client/dist), so the tests don't need a Vite build.
+const fs = require('fs');
+const os = require('os');
+const CLIENT = fs.mkdtempSync(require('path').join(os.tmpdir(), 'sbpo-client-'));
+fs.mkdirSync(CLIENT + '/assets');
+fs.writeFileSync(CLIENT + '/index.html', '<div id="app"></div>');
+fs.writeFileSync(CLIENT + '/login.html', '<div id="login"></div>');
+fs.writeFileSync(CLIENT + '/assets/index-AbCd1234.js', 'console.log(1)');
+process.env.CLIENT_DIR = CLIENT;
+
 const { test, before, after } = require('node:test');
 const assert = require('node:assert');
 const http = require('http');
@@ -27,85 +37,28 @@ before(async () => {
   server = http.createServer(createApp()).listen(0);
   base = `http://127.0.0.1:${server.address().port}`;
 });
-after(() => server.close());
+after(() => { server.close(); fs.rmSync(CLIENT, { recursive: true, force: true }); });
 
-test('root answers with a small JSON status (the UI is the separate frontend)', async () => {
+test('root redirects to /admin', async () => {
   const r = await req('GET', '/');
-  assert.strictEqual(r.status, 200);
-  assert.deepStrictEqual(await r.json(), { name: 'SBPO Link Tree API', status: 'ok' });
+  assert.strictEqual(r.status, 302);
+  assert.strictEqual(r.headers.get('location'), '/admin');
 });
 
-test('health check for the host', async () => {
-  const r = await req('GET', '/health');
-  assert.strictEqual(r.status, 200);
-  assert.deepStrictEqual(await r.json(), { ok: true });
-});
-
-test('the API needs a session; the old /admin pages are gone', async () => {
+test('admin shows login page until signed in, then the app', async () => {
+  let r = await req('GET', '/admin');
+  assert.match(await r.text(), /id="login"/);
   assert.strictEqual((await req('GET', '/api/accounts')).status, 401);
   assert.strictEqual((await req('POST', '/login', { u: 'admin', p: 'nope' })).status, 401);
-  let r = await req('POST', '/login', { u: 'admin', p: 'test-pass' });
+  r = await req('POST', '/login', { u: 'admin', p: 'test-pass' });
   assert.strictEqual(r.status, 200);
   cookie = r.headers.get('set-cookie').split(';')[0];
-  assert.strictEqual((await req('GET', '/api/accounts')).status, 200);
-  assert.strictEqual((await req('GET', '/admin')).status, 404);
-  assert.strictEqual((await req('GET', '/admin/js/main.js')).status, 404);
-});
-
-test('CORS: only CLIENT_ORIGIN may call the API with cookies; other sites cannot write', async () => {
-  const config = require('../src/config');
-  const app = 'https://app.example.com', evil = 'https://evil.example.net';
-  config.clientOrigins.push(app);
-  try {
-    // preflight from the allowed origin
-    let r = await req('OPTIONS', '/api/accounts', undefined, { Origin: app, 'Access-Control-Request-Method': 'PUT' });
-    assert.strictEqual(r.status, 204);
-    assert.strictEqual(r.headers.get('access-control-allow-origin'), app);
-    assert.strictEqual(r.headers.get('access-control-allow-credentials'), 'true');
-    assert.match(r.headers.get('access-control-allow-methods'), /PUT/);
-    // preflight from anywhere else gets no permission
-    r = await req('OPTIONS', '/api/accounts', undefined, { Origin: evil });
-    assert.strictEqual(r.headers.get('access-control-allow-origin'), null);
-    // allowed origin can read and write; the response carries the CORS headers
-    r = await req('GET', '/api/accounts', undefined, { Origin: app });
-    assert.strictEqual(r.status, 200);
-    assert.strictEqual(r.headers.get('access-control-allow-origin'), app);
-    r = await req('POST', '/api/accounts', { name: 'Cors Person' }, { Origin: app });
-    assert.strictEqual(r.status, 201);
-    const created = await r.json();
-    // a write from another origin is refused even with a valid session cookie (CSRF)
-    r = await req('POST', '/api/accounts', { name: 'Evil' }, { Origin: evil });
-    assert.strictEqual(r.status, 403);
-    r = await req('DELETE', '/api/accounts/' + created.id, undefined, { Origin: evil });
-    assert.strictEqual(r.status, 403);
-    r = await req('POST', '/logout', undefined, { Origin: evil });
-    assert.strictEqual(r.status, 403);
-    // no Origin header (curl, server to server) is not affected; reads from other origins are not blocked but get no CORS grant
-    assert.strictEqual((await req('DELETE', '/api/accounts/' + created.id)).status, 200);
-    r = await req('GET', '/api/accounts', undefined, { Origin: evil });
-    assert.strictEqual(r.headers.get('access-control-allow-origin'), null);
-  } finally { config.clientOrigins.length = 0; }
-});
-
-test('session cookie follows COOKIE_SAMESITE / COOKIE_SECURE and logout clears it the same way', async () => {
-  const config = require('../src/config');
-  const login = async () => (await req('POST', '/login', { u: 'admin', p: 'test-pass' }, { 'x-forwarded-proto': 'https' })).headers.get('set-cookie');
-  const first = await login();
-  assert.match(first, /SameSite=Strict/);
-  assert.match(first, /Max-Age=604800(;|$)/, 'default session is 7 days');
-  config.cookieSameSite = 'none';
-  try {
-    const c = await login();
-    assert.match(c, /SameSite=None/);
-    assert.match(c, /; Secure/);
-    // Secure is forced for SameSite=None even if the proxy header is missing
-    const plain = (await req('POST', '/login', { u: 'admin', p: 'test-pass' })).headers.get('set-cookie');
-    assert.match(plain, /; Secure/);
-    const out = (await req('POST', '/logout')).headers.get('set-cookie');
-    assert.match(out, /^sid=;/);
-    assert.match(out, /Max-Age=0/);
-    assert.match(out, /SameSite=None/);
-  } finally { config.cookieSameSite = 'strict'; }
+  r = await req('GET', '/admin');
+  assert.match(await r.text(), /id="app"/);
+  r = await req('GET', '/admin/assets/index-AbCd1234.js');
+  assert.strictEqual(r.status, 200);
+  assert.match(r.headers.get('cache-control'), /immutable/);
+  assert.strictEqual((await req('GET', '/admin/../server/src/config.js')).status, 404);
 });
 
 test('imports the legacy data.json', async () => {
@@ -165,4 +118,133 @@ test('logo floats over the photo for banner layout', async () => {
   const a = await (await req('POST', '/api/accounts', { name: 'Banner Test' })).json();
   const html = await (await req('POST', '/api/preview', { ...a, profile: { ...a.profile, photo: PNG, logo: PNG }, theme: { ...a.theme, layout: 'banner' } })).text();
   assert.match(html, /<div class="lgo"><div class="lgc">/);
+});
+
+test('users: viewers only see statistics, admins manage users', async () => {
+  const a1 = await (await req('POST', '/api/accounts', { name: 'Card One' })).json();
+  const a2 = await (await req('POST', '/api/accounts', { name: 'Card Two' })).json();
+
+  assert.strictEqual((await req('POST', '/api/users', { username: 'x', password: '123456' })).status, 400, 'short username');
+  assert.strictEqual((await req('POST', '/api/users', { username: 'sales', password: '123' })).status, 400, 'short password');
+  assert.strictEqual((await req('POST', '/api/users', { username: 'admin', password: '123456' })).status, 409, 'built-in admin name');
+  let r = await req('POST', '/api/users', { username: 'Sales', name: 'Sales team', password: 'secret1', role: 'viewer', accounts: [a1.id, 'nope'] });
+  assert.strictEqual(r.status, 201);
+  const u = await r.json();
+  assert.deepStrictEqual(u.accounts, [a1.id], 'unknown account ids dropped');
+  assert.ok(!('hash' in u) && !('salt' in u), 'no password hash sent to the browser');
+  assert.strictEqual((await req('POST', '/api/users', { username: 'sales', password: 'secret1' })).status, 409);
+
+  const users = await (await req('GET', '/api/users')).json();
+  assert.deepStrictEqual(users.map(x => x.username), ['admin', 'sales']);
+
+  // sign in as the viewer
+  const login = await req('POST', '/login', { u: 'sales', p: 'secret1' });
+  assert.strictEqual(login.status, 200);
+  const vc = login.headers.get('set-cookie').split(';')[0];
+  const asViewer = (m, url, body) => req(m, url, body, { cookie: vc });
+
+  const me = await (await asViewer('GET', '/api/me')).json();
+  assert.strictEqual(me.role, 'viewer');
+  const list = await (await asViewer('GET', '/api/accounts')).json();
+  assert.deepStrictEqual(list.map(x => x.id), [a1.id], 'only the assigned card');
+  assert.strictEqual((await asViewer('GET', '/api/accounts/' + a1.id)).status, 200);
+  assert.ok((await (await asViewer('GET', '/api/accounts/' + a1.id)).json()).stats, 'stats included');
+  assert.strictEqual((await asViewer('GET', '/api/accounts/' + a2.id)).status, 404, 'other cards hidden');
+
+  for (const [m, url, body] of [
+    ['POST', '/api/accounts', { name: 'Hack' }], ['PUT', '/api/accounts/' + a1.id, a1], ['DELETE', '/api/accounts/' + a1.id],
+    ['PUT', '/api/brand', { logo: '' }], ['POST', '/api/media', { data: PNG }], ['POST', '/api/vcard', { text: 'BEGIN:VCARD\nEND:VCARD' }],
+    ['POST', '/api/preview', a1], ['GET', '/api/users'], ['POST', '/api/users', { username: 'evil', password: '123456', role: 'admin' }],
+    ['PUT', '/api/users/sales', { role: 'admin' }], ['DELETE', '/api/users/sales'],
+  ]) assert.strictEqual((await asViewer(m, url, body)).status, 403, `${m} ${url} must be refused`);
+  assert.ok(await (await req('GET', '/api/accounts/' + a1.id)).json(), 'account still exists');
+  assert.strictEqual((await asViewer('GET', '/admin')).status, 200);
+
+  // the viewer changes their own password; old password stops working
+  assert.strictEqual((await asViewer('POST', '/api/me/password', { current: 'wrong', next: 'newpass1' })).status, 400);
+  r = await asViewer('POST', '/api/me/password', { current: 'secret1', next: 'newpass1' });
+  assert.strictEqual(r.status, 200);
+  const vc2 = r.headers.get('set-cookie').split(';')[0];
+  assert.strictEqual((await asViewer('GET', '/api/me')).status, 401, 'old session signed out');
+  assert.strictEqual((await req('GET', '/api/me', null, { cookie: vc2 })).status, 200, 'new cookie works');
+  assert.strictEqual((await req('POST', '/login', { u: 'sales', p: 'secret1' })).status, 401);
+
+  // admin widens access to all cards, then promotes and deletes
+  await req('PUT', '/api/users/sales', { accounts: 'all' });
+  assert.strictEqual((await (await req('GET', '/api/accounts', null, { cookie: vc2 })).json()).length >= 2, true);
+  await req('PUT', '/api/users/sales', { role: 'admin' });
+  assert.strictEqual((await req('POST', '/api/accounts', { name: 'By Sales' }, { cookie: vc2 })).status, 201, 'promoted user can edit at once');
+  assert.strictEqual((await req('DELETE', '/api/users/sales', null, { cookie: vc2 })).status, 400, 'cannot delete yourself');
+  assert.strictEqual((await req('PUT', '/api/users/sales', { role: 'viewer' }, { cookie: vc2 })).status, 400, 'cannot demote yourself');
+  assert.strictEqual((await req('DELETE', '/api/users/sales')).status, 200);
+  assert.strictEqual((await req('GET', '/api/me', null, { cookie: vc2 })).status, 401, 'deleted user signed out');
+});
+
+test('save contact: vCard served with contact headers (upload and hosted link)', async () => {
+  const VC = 'BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Yiha Yimam\r\nTEL:+251900000000\r\nEND:VCARD\r\n';
+  assert.strictEqual((await req('POST', '/api/vcard', { text: '<html>nope</html>' })).status, 400);
+  const up = await (await req('POST', '/api/vcard', { text: VC })).json();
+  assert.match(up.url, /^\/media\/[a-f0-9]{32}$/);
+
+  const a = await (await req('POST', '/api/accounts', { name: 'Vcard Person' })).json();
+  a.blocks[0].vcf = up.url; a.blocks[0].vcfName = 'yiha.vcf';
+  await req('PUT', '/api/accounts/' + a.id, a);
+  const page = await (await req('GET', '/' + a.slug)).text();
+  assert.match(page, /data-vcf href="\/vcf\//);
+  assert.match(page, /id="vh"/, 'Android hint included');
+
+  let r = await req('GET', `/vcf/${a.id}/${a.blocks[0].id}?s=nfc`, null, { 'user-agent': 'Mozilla/5.0 (Linux; Android 14) Chrome/129' });
+  assert.strictEqual(r.status, 200);
+  assert.strictEqual(r.headers.get('content-type'), 'text/x-vcard; charset=utf-8');
+  assert.match(r.headers.get('content-disposition'), /^inline; filename="Vcard Person\.vcf"/);
+  assert.strictEqual(await r.text(), VC);
+
+  // A vCard hosted elsewhere with a wrong content type is passed on with the right one.
+  const host = http.createServer((q, s) => {
+    if (q.url === '/card.vcf') { s.writeHead(200, { 'Content-Type': 'application/octet-stream' }); return s.end(VC); }
+    s.writeHead(200, { 'Content-Type': 'text/html' }); s.end('<html>login page</html>');
+  }).listen(0);
+  const hb = `http://127.0.0.1:${host.address().port}`;
+  try {
+    a.blocks[0].vcf = ''; a.blocks[0].url = hb + '/card.vcf';
+    await req('PUT', '/api/accounts/' + a.id, a);
+    r = await req('GET', `/vcf/${a.id}/${a.blocks[0].id}`);
+    assert.strictEqual(r.headers.get('content-type'), 'text/x-vcard; charset=utf-8');
+    assert.strictEqual(await r.text(), VC);
+
+    a.blocks[0].url = hb + '/not-a-vcard';
+    await req('PUT', '/api/accounts/' + a.id, a);
+    r = await req('GET', `/vcf/${a.id}/${a.blocks[0].id}`);
+    assert.strictEqual(r.status, 302, 'non-vCard content is never passed on');
+    assert.strictEqual(r.headers.get('location'), hb + '/not-a-vcard');
+  } finally { host.close(); }
+
+  const { directUrl } = require('../src/services/vcard');
+  assert.strictEqual(directUrl('https://drive.google.com/file/d/1AbCdEfGhIjKlMn/view?usp=sharing'), 'https://drive.google.com/uc?export=download&id=1AbCdEfGhIjKlMn');
+  assert.strictEqual(directUrl('https://www.dropbox.com/s/x/card.vcf?dl=0'), 'https://www.dropbox.com/s/x/card.vcf?dl=1');
+});
+
+test('branding: footer text and logo size are saved and shown on pages', async () => {
+  let b = await (await req('GET', '/api/brand')).json();
+  assert.strictEqual(b.text, 'Powered by Shaggar BPO Enterprise');
+  assert.strictEqual(b.logoSize, 18);
+  let r = await req('PUT', '/api/brand', { text: '  Made by <Acme>  Ltd ', logoSize: 500 });
+  b = await r.json();
+  assert.strictEqual(b.text, 'Made by <Acme> Ltd');
+  assert.strictEqual(b.logoSize, 60, 'size is clamped');
+  r = await req('PUT', '/api/brand', { logo: PNG });
+  b = await r.json();
+  assert.match(b.logo, /^\/media\//);
+  assert.strictEqual(b.text, 'Made by <Acme> Ltd', 'logo upload keeps the text');
+  const pub = await (await fetch(base + '/brand.json')).json();
+  assert.strictEqual(pub.text, 'Made by <Acme> Ltd');
+  const accs = await (await req('GET', '/api/accounts')).json();
+  if (accs.length) {
+    const page = await (await fetch(base + '/' + accs[0].slug)).text();
+    assert.match(page, /Made by &lt;Acme&gt; Ltd/);
+    assert.match(page, /height:60px/);
+  }
+  await req('PUT', '/api/brand', { text: '' });
+  assert.strictEqual((await (await req('GET', '/api/brand')).json()).text, '', 'empty text hides the statement');
+  await req('PUT', '/api/brand', { text: 'Powered by Shaggar BPO Enterprise', logoSize: 18, logo: '' });
 });

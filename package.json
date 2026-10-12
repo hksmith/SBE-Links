@@ -1,14 +1,15 @@
 {
   "name": "sbpo-link-tree",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "private": true,
-  "description": "Multi-account link-in-bio pages with NFC tap tracking. frontend/ = React admin app (Vercel), server/ = Node.js API + MongoDB (Render).",
+  "description": "Multi-account link-in-bio pages with NFC tap tracking. client/ = admin web app (React + Vite), server/ = Node.js API + MongoDB.",
   "scripts": {
-    "postinstall": "npm --prefix server install",
+    "postinstall": "npm --prefix server install && npm --prefix client install",
+    "build": "npm --prefix client run build",
+    "prestart": "node -e \"process.exit(require('fs').existsSync('client/dist/index.html') ? 0 : 1)\" || npm run build",
     "start": "npm --prefix server start",
     "dev": "npm --prefix server run dev",
-    "frontend": "npm --prefix frontend run dev",
-    "build:frontend": "npm --prefix frontend install && npm --prefix frontend run build",
+    "dev:client": "npm --prefix client run dev",
     "test": "npm --prefix server test",
     "migrate": "npm --prefix server run migrate --"
   }

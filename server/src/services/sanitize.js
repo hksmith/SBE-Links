@@ -2,7 +2,7 @@
 const crypto = require('crypto');
 const ICONS = require('../data/icons');
 
-const RESERVED = ['admin', 'api', 'go', 'n', 'vcf', 'login', 'logout', 'media', 'health', 'favicon.ico'];
+const RESERVED = ['admin', 'api', 'go', 'n', 'vcf', 'login', 'logout', 'media', 'favicon.ico'];
 const FONTS = ['Inter', 'Poppins', 'DM Sans', 'Montserrat', 'Playfair Display', 'Lora', 'Libre Baskerville', 'Linden Hill', 'Merriweather', 'Space Grotesk', 'Space Mono', 'Orbitron', 'Bebas Neue', 'Pacifico'];
 const TXK = ['name', 'title', 'dept', 'company', 'bio', 'link', 'sub', 'block', 'foot'];
 const NEUTRAL = { pageBg: '#ffffff', headText: '#111111', linkBg: '#111111', linkText: '#ffffff', linkShadow: '#111111', blockBg: '#f3f3f3', blockText: '#111111', radius: 12, bgType: 'solid', bg2: '#302b63', bgImage: '', layout: 'minimal', picShape: 'rounded', picSize: 250, picOutline: false, disp: 'Inter', body: 'Inter', headSize: 'medium', alpha: 0, shadow: false, outline: true, align: 'center', tx: {} };
@@ -83,7 +83,7 @@ function clean(b, old) {
     else if (x.type === 'images') o.imgs = (x.imgs || []).slice(0, 12).map(img).filter(Boolean);
     else if (x.type === 'text') Object.assign(o, { text: S(x.text, 2000), f: FONTS.includes(x.f) ? x.f : '', s: +x.s ? clamp(x.s, 8, 72, 0) : 0 });
     else if (x.type === 'video') o.url = safeUrl(x.url);
-    else if (x.type === 'contact') Object.assign(o, { label: S(x.label, 60) || 'Save My Contact', url: safeUrl(x.url) });
+    else if (x.type === 'contact') Object.assign(o, { label: S(x.label, 60) || 'Save My Contact', url: safeUrl(x.url), vcf: MEDIA_URL.test(x.vcf) ? x.vcf : '', vcfName: x.vcf ? S(x.vcfName, 80) : '' });
     else if (x.type !== 'divider') return null;
     return o;
   }).filter(Boolean);

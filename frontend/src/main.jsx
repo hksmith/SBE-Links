@@ -1,13 +1,6 @@
-import { StrictMode } from 'react';
+// Admin app entry point.
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter } from 'react-router-dom';
 import App from './App.jsx';
-import './styles.css';
+import './styles/admin.css';
 
-createRoot(document.getElementById('root')).render(
-  <StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
-  </StrictMode>,
-);
+createRoot(document.getElementById('app')).render(<App />);

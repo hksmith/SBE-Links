@@ -1,5 +1,5 @@
 // settings collection: small key/value documents ({ _id: key, value }).
-// Keys in use: "brand" ({ logo }), "secret" (HMAC key for admin sessions).
+// Keys in use: "brand" ({ logo, logoSize, text }), "secret" (HMAC key for admin sessions).
 const { db } = require('../db');
 
 module.exports = {

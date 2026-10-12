@@ -19,10 +19,6 @@ function loadEnvFile(file) {
 loadEnvFile(path.join(ROOT, '.env'));
 
 const env = process.env;
-const flag = v => (/^(1|true|yes|on)$/i.test(String(v || '')) ? true : /^(0|false|no|off)$/i.test(String(v || '')) ? false : undefined);
-// Browser origins allowed to use the API (the deployed frontend). Comma separated, no trailing slash.
-const clientOrigins = String(env.CLIENT_ORIGIN || '').split(',').map(s => s.trim().replace(/\/+$/, '')).filter(Boolean);
-const sameSite = String(env.COOKIE_SAMESITE || 'strict').toLowerCase();
 let adminPassword = env.ADMIN_PASSWORD;
 const generatedPassword = !adminPassword;
 if (!adminPassword) adminPassword = crypto.randomBytes(6).toString('hex');
@@ -34,12 +30,9 @@ module.exports = {
   adminUser: env.ADMIN_USER || 'admin',
   adminPassword,
   generatedPassword,
-  trustProxy: !!flag(env.TRUST_PROXY),
-  clientOrigins,
-  // strict: frontend reaches the API through same-origin rewrites (Vercel). none: frontend calls the API directly from another site.
-  cookieSameSite: ['strict', 'lax', 'none'].includes(sameSite) ? sameSite : 'strict',
-  cookieSecure: flag(env.COOKIE_SECURE),   // undefined = automatic (on when the request came in over HTTPS)
-  sessionDays: Number(env.SESSION_DAYS) > 0 ? Number(env.SESSION_DAYS) : 7,
+  trustProxy: !!env.TRUST_PROXY,
   // Old single-file database. Imported automatically the first time the MongoDB database is empty.
   legacyDataFile: env.LEGACY_DATA_FILE || path.join(ROOT, 'data', 'legacy-data.json'),
+  // The built admin app (npm run build -> client/dist).
+  clientDir: env.CLIENT_DIR ? path.resolve(env.CLIENT_DIR) : path.resolve(ROOT, '..', 'client', 'dist'),
 };

@@ -1,10 +1,19 @@
-// Admin login: one admin user from config, signed session cookie, simple brute-force limiter.
+// Sign-in and permissions.
+//   - The admin from .env (ADMIN_USER / ADMIN_PASSWORD) always exists and always has full access.
+//   - More people are added from the admin app (users collection) as either
+//       admin  – full access, same as the .env admin
+//       viewer – can only look at statistics (all cards, or only the cards they were given)
+// Sessions are a signed cookie: sid=<user>.<ver>.<expiry>.<signature>
 const crypto = require('crypto');
 const config = require('../config');
 const settings = require('../repositories/settings');
+const usersRepo = require('../repositories/users');
 
 let secret = null;
+const WEEK = 7 * 864e5;
 const tries = {};
+const BUILTIN = '@admin'; // id of the .env admin inside the session cookie (not a valid username)
+const ROLES = ['admin', 'viewer'];
 
 async function init() {
   secret = await settings.get('secret');
@@ -14,37 +23,69 @@ async function init() {
 const sha = s => crypto.createHash('sha256').update(String(s)).digest();
 const same = (a, b) => crypto.timingSafeEqual(sha(a), sha(b));
 const sign = s => crypto.createHmac('sha256', secret).update(s).digest('hex');
+const b64 = s => Buffer.from(s).toString('base64url');
+const unb64 = s => Buffer.from(s, 'base64url').toString();
 
-function isLoggedIn(req) {
+function hashPassword(pass, salt = crypto.randomBytes(16).toString('hex')) {
+  return { salt, hash: crypto.scryptSync(String(pass), salt, 32).toString('hex') };
+}
+const checkPassword = (pass, u) => !!u.salt && same(hashPassword(pass, u.salt).hash, u.hash);
+
+const builtinUser = () => ({ username: config.adminUser, name: 'Main admin', role: 'admin', accounts: 'all', builtin: true, ver: 0 });
+
+// What the browser is allowed to see about a user.
+const publicUser = u => ({ username: u.username, name: u.name || u.username, role: u.role, accounts: u.accounts, builtin: !!u.builtin, created: u.created || 0 });
+
+function makeCookie(req, u) {
+  const exp = String(Date.now() + WEEK);
+  const body = `${b64(u.builtin ? BUILTIN : u.username)}.${u.ver || 0}.${exp}`;
+  const secure = req.headers['x-forwarded-proto'] === 'https' ? '; Secure' : '';
+  return `sid=${body}.${sign(body)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${WEEK / 1000}${secure}`;
+}
+
+// Returns the signed-in user, or null. Reads the user from the database every time,
+// so a role change or a deleted user takes effect immediately.
+async function currentUser(req) {
+  if (req._user !== undefined) return req._user;
+  req._user = null;
   const m = /(?:^|; )sid=([^;]+)/.exec(req.headers.cookie || '');
-  if (!m) return false;
-  const [exp, sig] = m[1].split('.');
-  return +exp > Date.now() && !!sig && sig.length === 64 && crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(sign(exp)));
+  if (!m) return null;
+  const parts = m[1].split('.');
+  if (parts.length !== 4) return null;
+  const [id, ver, exp, sig] = parts, body = `${id}.${ver}.${exp}`;
+  if (!(+exp > Date.now()) || sig.length !== 64 || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(sign(body)))) return null;
+  const name = unb64(id);
+  if (name === BUILTIN) return (req._user = builtinUser());
+  const u = await usersRepo.get(name);
+  if (!u || String(u.ver || 0) !== ver) return null;
+  return (req._user = u);
 }
 
 function clientIp(req) {
   return (config.trustProxy && String(req.headers['x-forwarded-for'] || '').split(',')[0].trim()) || req.socket.remoteAddress;
 }
 
-// Session cookie. SameSite=None (frontend on another site) requires Secure, so it is forced on.
-function cookie(req, value, maxAge) {
-  const ss = config.cookieSameSite, https = req.headers['x-forwarded-proto'] === 'https';
-  const secure = ss === 'none' || config.cookieSecure === true || (config.cookieSecure === undefined && https);
-  return `sid=${value}; HttpOnly; SameSite=${ss[0].toUpperCase() + ss.slice(1)}; Path=/; Max-Age=${maxAge}${secure ? '; Secure' : ''}`;
-}
-const logout = req => cookie(req, '', 0);
-
-// Returns { ok, cookie } or { error: 'rate' | 'bad' }
-function login(req, user, pass) {
+// Returns { ok, cookie, user } or { error: 'rate' | 'bad' }
+async function login(req, user, pass) {
   const ip = clientIp(req), now = Date.now();
   tries[ip] = (tries[ip] || []).filter(t => now - t < 6e5);
   if (tries[ip].length >= 8) return { error: 'rate' };
-  if (same(user, config.adminUser) && same(pass, config.adminPassword)) {
-    const exp = String(now + config.sessionDays * 864e5);
-    return { ok: true, cookie: cookie(req, `${exp}.${sign(exp)}`, config.sessionDays * 864e2) };
+  let u = null;
+  if (same(user, config.adminUser)) {
+    if (same(pass, config.adminPassword)) u = builtinUser();
+  } else {
+    const found = await usersRepo.get(String(user).trim().toLowerCase());
+    if (found && checkPassword(pass, found)) u = found;
   }
+  if (u) return { ok: true, cookie: makeCookie(req, u), user: publicUser(u) };
   tries[ip].push(now);
   return { error: 'bad' };
 }
 
-module.exports = { init, isLoggedIn, login, logout };
+const logoutCookie = 'sid=; Path=/; Max-Age=0';
+
+// Permission helpers
+const isAdmin = u => !!u && u.role === 'admin';
+const canSee = (u, accountId) => !!u && (u.role === 'admin' || u.accounts === 'all' || (Array.isArray(u.accounts) && u.accounts.includes(accountId)));
+
+module.exports = { init, currentUser, login, logoutCookie, makeCookie, hashPassword, checkPassword, publicUser, isAdmin, canSee, ROLES };

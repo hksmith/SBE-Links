@@ -4,6 +4,7 @@ const mediaRepo = require('../repositories/media');
 const stats = require('../services/stats');
 const brand = require('../services/brand');
 const { renderPage } = require('../services/render');
+const vcf = require('../services/vcard');
 const { html, redirect, notFound } = require('../lib/http');
 
 const shouldTrack = req => req.method === 'GET' && !stats.BOT.test(req.headers['user-agent'] || '');
@@ -13,7 +14,7 @@ async function showProfile(req, res, slug, src) {
   const a = await accounts.bySlug(slug);
   if (!a) return notFound(res);
   if (shouldTrack(req)) stats.track({ t: Date.now(), k: 'view', a: a.id, src, dev: dev(req) });
-  return html(res, renderPage(a, { src, brandLogo: await brand.logo() }));
+  return html(res, renderPage(a, { src, brand: await brand.get() }));
 }
 
 module.exports = router => {
@@ -36,7 +37,7 @@ module.exports = router => {
   router.get('/go/:account/:item', async (req, res, { params, url }) => {
     const a = await accounts.get(params.account);
     const it = a && a.blocks.flatMap(b => b.items || []).find(i => i.id === params.item);
-    if (!it || !it.url) return redirect(res, a ? '/' + a.slug : '/');
+    if (!it || !it.url) return redirect(res, a ? '/' + a.slug : '/admin');
     if (shouldTrack(req)) stats.track({ t: Date.now(), k: 'click', a: a.id, id: it.id, title: it.title, src: stats.sourceOf(url), dev: dev(req) });
     return redirect(res, it.url);
   });
@@ -44,9 +45,12 @@ module.exports = router => {
   const vcard = async (req, res, { params, url }) => {
     const a = await accounts.get(params.account);
     const c = a && a.blocks.find(b => b.type === 'contact' && (!params.block || b.id === params.block));
-    if (!c || !c.url) return redirect(res, a ? '/' + a.slug : '/');
+    if (!c || !(c.url || c.vcf)) return redirect(res, a ? '/' + a.slug : '/admin');
     if (shouldTrack(req)) stats.track({ t: Date.now(), k: 'click', a: a.id, id: c.id, title: c.label, src: stats.sourceOf(url), dev: dev(req) });
-    return redirect(res, c.url);
+    // Serve the vCard ourselves with contact headers, so phones offer "add to contacts".
+    const text = await vcf.load(c);
+    if (text) return vcf.send(res, text, a.profile.name);
+    return c.url ? redirect(res, c.url) : redirect(res, '/' + a.slug); // the hosted file could not be read: old behaviour
   };
   router.get('/vcf/:account', vcard);
   router.get('/vcf/:account/:block', vcard);

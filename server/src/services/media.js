@@ -20,6 +20,7 @@ function slots(account) {
   const out = [[account.profile, 'photo'], [account.profile, 'logo'], [account.theme, 'bgImage']];
   for (const b of account.blocks || []) {
     for (const it of b.items || []) out.push([it, 'img']);
+    if (b.type === 'contact') out.push([b, 'vcf']); // uploaded vCard file
     if (b.imgs) b.imgs.forEach((_, i) => out.push([b.imgs, i]));
   }
   return out;

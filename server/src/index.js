@@ -21,9 +21,7 @@ async function main() {
   const server = http.createServer(createApp());
   server.listen(config.port, () => {
     console.log(`SBPO Link Tree running on http://localhost:${config.port}`);
-    console.log(`  pages: /<slug>   NFC: /n/<slug>   API: /api/*   (the admin UI is the separate frontend/ app)`);
-    if (config.clientOrigins.length) console.log(`  allowed frontend origin(s): ${config.clientOrigins.join(', ')}  (cookies: SameSite=${config.cookieSameSite})`);
-    else console.warn('  CLIENT_ORIGIN is not set: browser frontends on other origins are not allowed and cross-site write protection is off.');
+    console.log(`  admin: http://localhost:${config.port}/admin   page: /<slug>   NFC: /n/<slug>`);
     if (config.generatedPassword) console.log(`  ADMIN_PASSWORD not set. Temporary password for "${config.adminUser}": ${config.adminPassword}`);
   });
 

@@ -1,6 +1,6 @@
 // Holds the MongoDB collections used by the repositories.
 // `connect()` opens the real database; tests call `use()` with in-memory stand-ins.
-const COLLECTIONS = ['accounts', 'events', 'stats', 'media', 'settings'];
+const COLLECTIONS = ['accounts', 'events', 'stats', 'media', 'settings', 'users'];
 const db = {};
 let client = null;
 
@@ -27,6 +27,7 @@ async function ensureIndexes() {
   await db.events.createIndex({ a: 1, t: -1 });
   await db.events.createIndex({ a: 1, k: 1, t: -1 });
   await db.media.createIndex({ created: 1 });
+  await db.users.createIndex({ created: 1 });
 }
 
 async function close() {
