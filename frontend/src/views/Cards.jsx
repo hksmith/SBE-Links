@@ -9,7 +9,8 @@ import { useLive } from '../lib/live.js';
 import { Icon } from '../components/Icon.jsx';
 import { CopyButton } from '../components/CopyButton.jsx';
 import { PageHeader } from '../components/TopBar.jsx';
-import { deleteAccount, newAccount } from './accountActions.jsx';
+import { deleteAccount, newAccount, resetCardStats } from './accountActions.jsx';
+import { Menu } from '../components/Menu.jsx';
 import { cardSignIn } from './loginDetails.jsx';
 
 export function Cards() {
@@ -69,7 +70,10 @@ export function Cards() {
                 onClick={async e => { e.stopPropagation(); if (await cardSignIn(a)) load(); }}>
                 <Icon k="people" size={14} /> {!a.login ? 'Create sign-in' : a.login.mustChange ? 'Sign-in details' : 'Signed in ✓'}
               </button>}
-              <button title="Delete" onClick={async e => { e.stopPropagation(); if (await deleteAccount(a)) load(); }}><Icon k="trash" size={16} /></button>
+              <span onClick={e => e.stopPropagation()}><Menu summary="•••" label="Card menu" className="row-mn">
+                <button onClick={async () => { if (await resetCardStats(a)) load(); }} disabled={!a.views && !a.clicks}>Reset statistics…</button>
+                <button className="dng" onClick={async () => { if (await deleteAccount(a)) load(); }}>Delete card…</button>
+              </Menu></span>
             </>
             : <span className="vw"><Icon k="graph" size={15} /> View stats</span>}
         </div>

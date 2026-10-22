@@ -15,7 +15,7 @@ import { useLive } from '../lib/live.js';
 import { Chart, Table } from './Analytics.jsx';
 import { deleteAccount } from './accountActions.jsx';
 import { cardSignIn } from './loginDetails.jsx';
-import { addMember, importMembers, downloadSignIns, downloadTemplate, deleteCompany, companyAdminSignIn } from './companyActions.jsx';
+import { addMember, importMembers, downloadSignIns, downloadTemplate, deleteCompany, companyAdminSignIn, resetCompanyStats } from './companyActions.jsx';
 
 export function CompanyView({ id }) {
   const { isAdmin: admin } = useApp();
@@ -74,7 +74,8 @@ export function CompanyView({ id }) {
             <Icon k="people" size={14} /> {!c.adminLogin ? 'Create company admin sign-in' : `Company admin: ${c.adminLogin.username}${c.adminLogin.mustChange ? ' · not signed in yet' : ' ✓'}`}
           </button>
           <Menu summary="•••" label="Company menu">
-            <button onClick={async () => { if (await deleteCompany(c)) navigate('/'); }}>Delete company…</button>
+            <button onClick={run(() => resetCompanyStats(c))}>Reset statistics…</button>
+            <button className="dng" onClick={async () => { if (await deleteCompany(c)) navigate('/companies'); }}>Delete company…</button>
           </Menu>
         </div>
       )}
@@ -104,23 +105,28 @@ export function CompanyView({ id }) {
               <button className={cls('signin', a.login && a.login.mustChange && 'new')} onClick={run(() => cardSignIn(a))}>
                 <Icon k="people" size={14} /> {!a.login ? 'Create sign-in' : a.login.mustChange ? 'Sign-in details' : 'Signed in ✓'}
               </button>
-              <button title="Delete" onClick={run(() => deleteAccount(a))}><Icon k="trash" size={16} /></button>
+              <span onClick={e => e.stopPropagation()}><Menu summary="•••" label="Card menu" className="row-mn">
+                <button onClick={run(() => resetCompanyStats(c, a))} disabled={!a.views && !a.clicks}>Reset statistics…</button>
+                <button className="dng" onClick={run(() => deleteAccount(a))}>Delete card…</button>
+              </Menu></span>
             </> : <span className="vw"><Icon k="graph" size={15} /> View stats</span>}
           </div>
         ))}
         {!shown.length && <p style={{ color: 'var(--mut)' }}>{f ? 'No one matches your search.' : admin ? 'No cards yet. Set the company page and card design, then “+ Add card” or “Import from Excel”.' : 'No cards yet.'}</p>}
-      </> : <CompanyStats c={c} />}
+      </> : <CompanyStats c={c} onReset={admin ? run(() => resetCompanyStats(c)) : null} />}
     </main>
   </>;
 }
 
 // Combined statistics: 14-day chart, everyone ranked, devices, sources, recent clicks.
-function CompanyStats({ c }) {
+function CompanyStats({ c, onReset }) {
   const s = c.stats;
   const who = Object.fromEntries([[c.id, 'Company page'], ...c.members.map(a => [a.id, a.name])]);
   const rows = [{ id: c.id, name: 'Company page', ...c.page }, ...c.members].sort((a, b) => b.views - a.views || b.clicks - a.clicks);
   const mx = Math.max(1, ...rows.map(r => r.views));
   return <>
+    {onReset && <div className="reset-row top"><small>Statistics of the company page and all its cards.</small>
+      <button className="danger-btn" onClick={onReset}><Icon k="graph" size={14} /> Reset statistics…</button></div>}
     <div className="card"><h2>Last 14 days — all cards</h2><Chart days={s.days} /></div>
     <div className="card"><h2>Per person</h2><table className="rank"><thead><tr><th>Card</th><th>Taps</th><th>Views</th><th>Clicks</th></tr></thead><tbody>
       {rows.map(r => (

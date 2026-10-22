@@ -68,3 +68,19 @@ export async function deleteAccount(a) {
   toast('Account deleted');
   return true;
 }
+
+// Statistics of one card back to zero (the card, its links and NFC link keep working). Resolves true when done.
+export async function resetCardStats(a) {
+  const n = (a.views || 0) + (a.clicks || 0);
+  const ok = await confirmDialog({
+    title: `Reset ${a.name || 'this card'}’s statistics?`,
+    text: `All recorded ${n ? `${n} ` : ''}views, NFC taps and clicks of this card are deleted and counting starts again from zero. The card itself is not changed. This can’t be undone.`,
+    confirm: 'Reset statistics', icon: 'graph',
+  });
+  if (!ok) return false;
+  try {
+    await send(`/api/accounts/${a.id}/reset-stats`, 'POST', undefined, 'Could not reset the statistics');
+    toast('Statistics reset');
+    return true;
+  } catch (e) { toast(e.message, { error: true }); return false; }
+}

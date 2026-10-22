@@ -113,6 +113,16 @@ they were last updated.
 
 Viewers see only *Dashboard* and *Cards* (limited to their cards, no QR codes); a company admin sees *Dashboard* and *Our company*.
 
+### Reset statistics
+
+Handy after testing a card or QR code yourself. Statistics are deleted and counting starts again from zero; pages, cards, NFC links
+and QR codes keep working. It can't be undone, so it always asks first. Admins only.
+
+- **A card**: the card's **•••** menu on *Cards* (or on its company's screen), or **Reset statistics** at the bottom of its *Analytics* tab.
+- **A company**: the company's **•••** menu, or the button on its *Statistics* tab. Choose **the whole company** (company page + every
+  card), **only the company page**, or **one card** from a list.
+- **A QR code**: **Reset statistics** on the QR code's screen.
+
 ### Settings → System
 
 - **System name** — replaces “SBPO Link Tree” in the menu, the browser tab and the sign-in page.
@@ -252,4 +262,4 @@ Existing accounts (same id) are skipped, so running it twice is safe.
 ```bash
 npm test
 ```
-Runs the API end to end (dashboard overview and system settings; QR codes: permissions, uploads, scan tracking, pausing, export; login, import, create/edit/delete, tracking, logo placement, user roles and permissions, vCard serving) against an in-memory stand-in, so no MongoDB is needed.
+Runs the API end to end (dashboard overview, system settings, resetting statistics; QR codes: permissions, uploads, scan tracking, pausing, export; login, import, create/edit/delete, tracking, logo placement, user roles and permissions, vCard serving) against an in-memory stand-in, so no MongoDB is needed.

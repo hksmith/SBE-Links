@@ -80,3 +80,41 @@ test('overview: counts, 30-day activity, today, top cards, QR scans and recent a
   assert.strictEqual(ov.recent.length, 1);
   assert.strictEqual(ov.topQr.length, 0);
 });
+
+test('reset statistics: one card, a whole company, only the company page, or one card of a company', async () => {
+  const views = async id => (await (await req('GET', '/api/accounts/' + id)).json()).stats.views;
+  const a = await (await req('POST', '/api/accounts', { name: 'Reset Me', login: false })).json();
+  await fetch(`${base}/${a.slug}`); await fetch(`${base}/n/${a.slug}`); await settle();
+  assert.strictEqual(await views(a.id), 2);
+
+  // admins only
+  await req('POST', '/api/users', { username: 'peek', password: 'secret1', role: 'viewer' });
+  const v = (await req('POST', '/login', { u: 'peek', p: 'secret1' }, '')).headers.get('set-cookie').split(';')[0];
+  assert.strictEqual((await req('POST', `/api/accounts/${a.id}/reset-stats`, undefined, v)).status, 403);
+
+  let r = await (await req('POST', `/api/accounts/${a.id}/reset-stats`)).json();
+  assert.strictEqual(r.removed, 2);
+  assert.strictEqual(await views(a.id), 0);
+  assert.strictEqual((await req('GET', '/api/accounts/' + a.id)).status, 200); // the card itself is kept
+
+  const c = await (await req('POST', '/api/companies', { name: 'Reset Co' })).json();
+  const m1 = await (await req('POST', `/api/companies/${c.id}/members`, { name: 'One Person', login: false })).json();
+  const m2 = await (await req('POST', `/api/companies/${c.id}/members`, { name: 'Two Person', login: false })).json();
+  const hitAll = async () => { await fetch(`${base}/${c.slug}`); await fetch(`${base}/${m1.path}`); await fetch(`${base}/${m2.path}`); await settle(); };
+  const companyViews = async () => (await (await req('GET', '/api/companies/' + c.id)).json()).stats.views;
+  await hitAll();
+  assert.strictEqual(await companyViews(), 3);
+
+  r = await (await req('POST', `/api/companies/${c.id}/reset-stats`, { scope: m1.id })).json();
+  assert.strictEqual(r.pages, 1);
+  assert.strictEqual(await views(m1.id), 0);
+  assert.strictEqual(await views(m2.id), 1);
+  await req('POST', `/api/companies/${c.id}/reset-stats`, { scope: 'page' });
+  assert.strictEqual(await companyViews(), 1); // only Two Person left
+
+  await hitAll();
+  r = await (await req('POST', `/api/companies/${c.id}/reset-stats`, { scope: 'all' })).json();
+  assert.strictEqual(r.pages, 3);
+  assert.strictEqual(await companyViews(), 0);
+  assert.strictEqual((await req('POST', `/api/companies/${c.id}/reset-stats`, { scope: a.id })).status, 400); // not a card of this company
+});

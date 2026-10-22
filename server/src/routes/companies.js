@@ -8,6 +8,7 @@ const companies = require('../services/companies');
 const owners = require('../services/owners');
 const pages = require('../services/pages');
 const stats = require('../services/stats');
+const events = require('../repositories/events');
 const media = require('../services/media');
 const { S, clean, slugify, validSlug } = require('../services/sanitize');
 const { json, readJson, origin, sendFile } = require('../lib/http');
@@ -171,6 +172,21 @@ function forAdmins(router) {
   });
 
   // Makes the company admin sign-in again (if it was deleted).
+  // Statistics back to zero. scope: 'all' = the company page and every card, 'page' = only the company page,
+  // or a card id of this company = only that card.
+  router.post('/api/companies/:id/reset-stats', async (req, res, { params }) => {
+    const c = await companiesRepo.get(params.id);
+    if (!c) return json(res, { error: 'nf' }, 404);
+    const b = (await readJson(req, 1e4)) || {};
+    const members = await accounts.listByCompany(c.id);
+    let ids;
+    if (b.scope === 'all') ids = [c.id, ...members.map(a => a.id)];
+    else if (b.scope === 'page') ids = [c.id];
+    else if (members.some(a => a.id === b.scope)) ids = [b.scope];
+    else return json(res, { error: 'scope', message: 'Choose what to reset.' }, 400);
+    json(res, { ok: true, removed: await events.clearMany(ids), pages: ids.length });
+  });
+
   router.post('/api/companies/:id/admin-login', async (req, res, { params }) => {
     const c = await companiesRepo.get(params.id);
     if (!c) return json(res, { error: 'nf' }, 404);

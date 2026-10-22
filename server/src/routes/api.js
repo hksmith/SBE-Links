@@ -205,6 +205,13 @@ module.exports = router => {
     json(res, { ok: true, slug: a.slug, path: await pages.pathFor(a) });
   });
 
+  // Statistics of one card back to zero (the card itself is untouched).
+  router.post('/api/accounts/:id/reset-stats', async (req, res, { params }) => {
+    const a = await accounts.get(params.id);
+    if (!a) return json(res, { error: 'nf' }, 404);
+    json(res, { ok: true, removed: await events.clearMany([a.id]) });
+  });
+
   router.delete('/api/accounts/:id', async (req, res, { params }) => {
     const a = await accounts.get(params.id);
     if (!a) return json(res, { error: 'nf' }, 404);

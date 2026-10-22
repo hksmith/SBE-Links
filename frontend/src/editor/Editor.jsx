@@ -7,6 +7,10 @@ import { navigate } from '../lib/router.js';
 import { Icon } from '../components/Icon.jsx';
 import { CopyButton, ShareButton } from '../components/CopyButton.jsx';
 import { Analytics } from '../views/Analytics.jsx';
+import { resetCardStats } from '../views/accountActions.jsx';
+import { send } from '../lib/api.js';
+import { toast } from '../lib/toast.js';
+import { confirmDialog } from '../components/Dialog.jsx';
 import { EditorContext } from './fields.jsx';
 import { useEditor } from './useEditor.js';
 import { BioTab } from './BioTab.jsx';
@@ -75,7 +79,19 @@ export function Editor({ id, kind = 'account' }) {
             <div>
               {tab === 'bio' && <BioTab open={open} setOpen={setOpen} />}
               {tab === 'design' && <DesignTab thTab={thTab} setThTab={setThTab} bsTab={bsTab} setBsTab={setBsTab} />}
-              {tab === 'stats' && <Analytics account={cur} stats={stats} />}
+              {tab === 'stats' && <>
+                <Analytics account={cur} stats={stats} />
+                <div className="reset-row">
+                  <small>Testing the card yourself? Start counting again from zero.</small>
+                  <button className="danger-btn" disabled={!stats.views && !stats.clicks} onClick={async () => {
+                    if (kind === 'page') { // the company page only
+                      if (!(await confirmDialog({ title: 'Reset the company page statistics?', text: 'Its views, taps and clicks are deleted and counting starts again from zero. The cards of the company keep theirs. This can’t be undone.', confirm: 'Reset statistics', icon: 'graph' }))) return;
+                      try { await send(`/api/companies/${id}/reset-stats`, 'POST', { scope: 'page' }); toast('Statistics reset'); } catch (e) { return toast(e.message, { error: true }); }
+                    } else if (!(await resetCardStats({ id, name: cur.profile.name, views: stats.views, clicks: stats.clicks }))) return;
+                    ed.reloadStats();
+                  }}><Icon k="graph" size={14} /> Reset statistics</button>
+                </div>
+              </>}
             </div>
           </div>
           <div>

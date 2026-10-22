@@ -51,6 +51,12 @@ module.exports = {
   async totalsFor(accountId) {
     return db.stats.findOne({ _id: accountId });
   },
+  // Statistics back to zero for these pages (their events and running totals). Returns how many events were removed.
+  async clearMany(ids) {
+    const r = await db.events.deleteMany({ a: { $in: ids } });
+    for (const id of ids) await db.stats.deleteOne({ _id: id });
+    return r.deletedCount || 0;
+  },
   async removeFor(accountId) {
     await db.events.deleteMany({ a: accountId });
     await db.stats.deleteOne({ _id: accountId });

@@ -287,3 +287,7 @@ header.top button{display:inline-flex;align-items:center;gap:6px}
 .fp-brand{display:flex;align-items:center;gap:10px;margin-bottom:18px}.fp-brand b{font:700 17px 'Space Grotesk',system-ui,sans-serif}
 .seg.sm button{white-space:nowrap}
 .qr-filter .seg button{white-space:nowrap}
+/* reset statistics */
+.reset-row{display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap;margin:4px 0 16px}.reset-row small{color:var(--mut)}
+.danger-btn{display:inline-flex;align-items:center;gap:6px;color:#b91c1c}.danger-btn:hover:not(:disabled){border-color:#dc2626;color:#dc2626;background:rgba(220,38,38,.05)}
+details.mn.row-mn div{width:190px}details.mn button.dng{color:#dc2626}details.mn button:disabled{opacity:.4}

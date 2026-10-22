@@ -184,3 +184,41 @@ export async function companyAdminSignIn(c) {
     return true;
   } catch (e) { toast(e.message, { error: true }); return false; }
 }
+
+// Statistics back to zero: the whole company (page + every card), only the company page, or one card.
+// `c` is the company as loaded by its screen ({ id, name, page, members }). Resolves true when done.
+function ResetStatsDialog({ c, card, onClose }) {
+  const [scope, setScope] = useState(card ? 'card' : 'all');
+  const [pick, setPick] = useState(card ? card.id : (c.members[0] || {}).id || '');
+  const num = x => (x ? (x.views || 0) + (x.clicks || 0) : 0);
+  const total = num(c.page) + c.members.reduce((s, m) => s + num(m), 0);
+  const submit = () => {
+    const body = { scope: scope === 'card' ? pick : scope };
+    if (!body.scope) throw new Error('Choose a card.');
+    return send(`/api/companies/${c.id}/reset-stats`, 'POST', body, 'Could not reset the statistics');
+  };
+  return (
+    <Dialog icon="graph" danger title="Reset statistics" confirm="Reset statistics" onSubmit={submit} onClose={onClose}
+      text="The chosen statistics are deleted and counting starts again from zero. Pages, cards and NFC links keep working. This can’t be undone.">
+      <div className="fld">
+        <label className="opt"><input type="radio" name="rs" checked={scope === 'all'} onChange={() => setScope('all')} />
+          <span><b>The whole company</b><small>The company page and all {c.members.length} card{c.members.length === 1 ? '' : 's'} · views and clicks: {total}</small></span></label>
+        <label className="opt"><input type="radio" name="rs" checked={scope === 'page'} onChange={() => setScope('page')} />
+          <span><b>Only the company page</b><small>Views and clicks: {num(c.page)}</small></span></label>
+        <label className="opt"><input type="radio" name="rs" checked={scope === 'card'} onChange={() => setScope('card')} disabled={!c.members.length} />
+          <span><b>One card</b><small>{c.members.length ? 'Choose whose statistics to reset' : 'This company has no cards yet'}</small></span></label>
+        {scope === 'card' && c.members.length > 0 && (
+          <select value={pick} onChange={e => setPick(e.target.value)} style={{ marginTop: 2 }}>
+            {c.members.map(m => <option key={m.id} value={m.id}>{m.name || '(no name)'} — views and clicks: {num(m)}</option>)}
+          </select>
+        )}
+      </div>
+    </Dialog>
+  );
+}
+
+export async function resetCompanyStats(c, card) {
+  const r = await showDialog(close => <ResetStatsDialog c={c} card={card} onClose={close} />);
+  if (r) toast(r.pages > 1 ? `Statistics of ${r.pages} pages reset` : 'Statistics reset');
+  return !!r;
+}
