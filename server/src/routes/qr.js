@@ -93,7 +93,7 @@ function forAdmins(router) {
   router.get('/api/qr-location-check', async (req, res) => {
     const h = n => req.headers[n] || null;
     json(res, {
-      visitorIp: geo.clientIp(req), cameThroughVercel: geo.viaVercel(req), result: await geo.locate(req),
+      visitorIp: geo.clientIp(req), privateRelayList: require('../services/relay').status(), cameThroughVercel: geo.viaVercel(req), result: await geo.locate(req),
       headers: { 'x-forwarded-for': h('x-forwarded-for'), 'x-vercel-forwarded-for': h('x-vercel-forwarded-for'), 'x-real-ip': h('x-real-ip'),
         'cf-connecting-ip': h('cf-connecting-ip'), 'x-vercel-ip-country': h('x-vercel-ip-country'), 'cf-ipcountry': h('cf-ipcountry') },
     });
@@ -113,9 +113,9 @@ function forAdmins(router) {
     if (!q) return json(res, { error: 'nf' }, 404);
     const off = (Number(url.searchParams.get('tz')) || 0) * 6e4;
     const when = t => new Date(t + off).toISOString().replace('T', ' ').slice(0, 19);
-    const rows = [['Date & time', 'First scan by this visitor', 'Device', 'System', 'Browser / app', 'Country', 'City', 'Language', 'Came from']];
-    for (const s of await repo.allScans(q.id)) rows.push([when(s.t), s.nw ? 'Yes' : 'No', s.dev, s.os, s.br, s.cc, s.city || '', s.lang, s.ref || '']);
-    const buf = xlsx.write([{ name: 'Scans', rows, widths: [20, 12, 11, 11, 16, 9, 16, 10, 22] }]);
+    const rows = [['Date & time', 'First scan by this visitor', 'Device', 'System', 'Browser / app', 'Country', 'City', 'iCloud Private Relay', 'Language', 'Came from']];
+    for (const s of await repo.allScans(q.id)) rows.push([when(s.t), s.nw ? 'Yes' : 'No', s.dev, s.os, s.br, s.cc, s.city || '', s.relay ? 'Yes' : '', s.lang, s.ref || '']);
+    const buf = xlsx.write([{ name: 'Scans', rows, widths: [20, 12, 11, 11, 16, 9, 16, 12, 10, 22] }]);
     sendFile(res, buf, `${q.name || q.code}-scans.xlsx`, XLSX);
   });
 }

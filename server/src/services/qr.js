@@ -60,14 +60,14 @@ async function scanInfo(req, secret) {
   const ua = String(req.headers['user-agent'] || '');
   const ip = geo.clientIp(req);
   const t = Date.now();
-  const { cc, city } = await geo.locate(req);
+  const { cc, city, relay } = await geo.locate(req);
   const lang = String(req.headers['accept-language'] || '').split(/[,;]/)[0].trim().slice(0, 12) || 'Unknown';
   let ref = '';
   try { ref = req.headers.referer ? new URL(req.headers.referer).hostname.slice(0, 80) : ''; } catch { /* ignore */ }
   return {
     t,
     v: crypto.createHmac('sha256', String(secret || 'qr')).update(ip + '|' + ua).digest('hex').slice(0, 20),
-    ...parseAgent(ua), cc, city, lang, ref,
+    ...parseAgent(ua), cc, city, lang, ref, ...(relay ? { relay: true } : {}),
   };
 }
 

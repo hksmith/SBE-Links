@@ -198,7 +198,11 @@ Deleting a company deletes its page, all its cards, their statistics and sign-in
   again from zero (e.g. after testing).
 - **Country** (and city) is found from the **phone's own internet address**. Scans pass through Vercel and Render/Cloudflare first, and
   the country Cloudflare adds describes Vercel's server (e.g. Johannesburg or Paris), not the phone — so it is not used. The address is
-  looked up with a free IP-location service (ipwho.is, then api.country.is), remembered for a day and never stored. Set
+  looked up with a free IP-location service (ipwho.is, then api.country.is), remembered for a day and never stored. **Safari with iCloud
+  Private Relay** (iPhone/Mac with iCloud+) hides the phone's address behind Apple's relay; general IP-location services place
+  those addresses in the United States. So relay addresses are checked against Apple's own published list
+  (`mask-api.icloud.com/egress-ip-ranges.csv`, loaded once a day), which gives the region the relay serves. Those scans are
+  marked **Private Relay** in *Recent scans* and in the Excel export, since the location is Apple's general area. Set
   `GEO_LOOKUP=off` in `server/.env` to switch the lookups off. To see how the server sees your own location, open
   `/api/qr-location-check` while signed in as an admin.
 

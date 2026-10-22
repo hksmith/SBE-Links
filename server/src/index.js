@@ -30,6 +30,7 @@ async function main() {
 
   // Remove images nobody uses any more, a few times a day.
   setInterval(() => media.collectGarbage().catch(e => console.error('Media cleanup failed:', e.message)), 6 * 3600e3).unref();
+  require('./services/relay').refresh(); // iCloud Private Relay list, for the country of Safari scans
   // …and QR code files that were uploaded but never used.
   setInterval(() => require('./repositories/qrcodes').removeUnusedFiles().catch(e => console.error('QR file cleanup failed:', e.message)), 6 * 3600e3).unref();
 

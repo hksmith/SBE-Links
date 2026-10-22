@@ -159,7 +159,8 @@ export function QrDetail({ id }) {
                 <tr key={i}>
                   <td><b>{ago(e.t)}</b><small>{when(e.t)}</small></td>
                   <td>{e.dev} · {e.os} · {e.br}</td>
-                  <td>{e.cc !== 'Unknown' ? <>{flag(e.cc)} {regionName(e.cc)}{e.city ? `, ${e.city}` : ''}</> : <span style={{ color: 'var(--mut)' }}>—</span>}</td>
+                  <td>{e.cc !== 'Unknown' ? <>{flag(e.cc)} {regionName(e.cc)}{e.city ? `, ${e.city}` : ''}</> : <span style={{ color: 'var(--mut)' }}>—</span>}
+                    {e.relay && <span className="tag rep" style={{ marginLeft: 6 }} title="Scanned with Safari and iCloud Private Relay: the location is the general area Apple gives for its relay, not the exact place.">Private Relay</span>}</td>
                   <td>{e.nw ? <span className="tag">New</span> : <span className="tag rep">Again</span>}</td>
                 </tr>
               )) : <tr><td className="empty">No scans yet. Scan the code with your phone to test it.</td></tr>}

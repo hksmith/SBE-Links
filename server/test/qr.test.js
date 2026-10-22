@@ -170,13 +170,13 @@ test('country: the phone\'s own address decides, not the country of the proxy in
   const real = globalThis.fetch, asked = [];
   process.env.GEO_LOOKUP = 'on';
   try {
-    globalThis.fetch = async url => { asked.push(String(url)); return { ok: true, json: async () => ({ success: true, country_code: 'ET', city: 'Addis Ababa' }) }; };
+    globalThis.fetch = async url => { if (/icloud/.test(url)) throw new Error('no relay list in this test'); asked.push(String(url)); return { ok: true, json: async () => ({ success: true, country_code: 'ET', city: 'Addis Ababa' }) }; };
     let r = await geo.locate(fake(viaVercel));
     assert.deepStrictEqual([r.cc, r.city, r.via], ['ET', 'Addis Ababa', 'ip']);
     assert.match(asked[0], /ipwho\.is\/196\.188\.1\.1/);
     await geo.locate(fake(viaVercel));
     assert.strictEqual(asked.length, 1); // remembered
-    globalThis.fetch = async url => { asked.push(String(url)); if (/ipwho/.test(url)) throw new Error('down'); return { ok: true, json: async () => ({ country: 'KE' }) }; };
+    globalThis.fetch = async url => { if (/icloud/.test(url)) throw new Error('no relay list in this test'); asked.push(String(url)); if (/ipwho/.test(url)) throw new Error('down'); return { ok: true, json: async () => ({ country: 'KE' }) }; };
     r = await geo.locate(fake({ 'x-forwarded-for': '41.90.1.1' }));
     assert.strictEqual(r.cc, 'KE');
     assert.strictEqual((await geo.locate(fake({}, '127.0.0.1'))).cc, 'Unknown'); // private addresses are never looked up
@@ -188,4 +188,26 @@ test('country: the phone\'s own address decides, not the country of the proxy in
   assert.strictEqual(j.visitorIp, '196.188.1.1');
   assert.strictEqual(j.cameThroughVercel, true);
   assert.strictEqual(j.result.cc, 'Unknown');
+});
+
+test('iCloud Private Relay: Apple\'s list decides the country of relay addresses', async () => {
+  const relay = require('../src/services/relay');
+  const geo = require('../src/services/geo');
+  relay.useList(['172.224.226.0/27,ET,ET-AA,Addis Ababa,', '172.225.0.0/24,US,US-NY,New York,', '2a02:26f7:b3c0:4000::/64,ET,ET-AA,Addis Ababa,', 'bad line', ''].join('\n'));
+  const fake = xff => ({ headers: { 'x-forwarded-for': xff, 'x-vercel-id': 'cpt1::x' }, socket: { remoteAddress: '10.0.0.1' } });
+  let r = await geo.locate(fake('172.224.226.17, 76.76.21.1'));
+  assert.deepStrictEqual([r.cc, r.city, r.relay], ['ET', 'Addis Ababa', true]);
+  r = await geo.locate(fake('2a02:26f7:b3c0:4000:1234::5'));
+  assert.strictEqual(r.cc, 'ET');
+  assert.strictEqual((await geo.locate(fake('172.225.0.200'))).cc, 'US');
+  assert.strictEqual((await geo.locate(fake('172.224.226.40'))).relay, undefined); // just outside the /27: not a relay address
+
+  // A scan through the relay is stored as such
+  const q = await (await req('POST', '/api/qr', { name: 'Relay test', type: 'link', url: 'https://example.com' })).json();
+  await scan(q.code, IPHONE, '172.224.226.9');
+  await settle();
+  const d = await (await req('GET', `/api/qr/${q.id}`)).json();
+  assert.strictEqual(d.stats.cc.ET, 1);
+  assert.strictEqual(d.stats.recent[0].relay, true);
+  relay.useList('');
 });

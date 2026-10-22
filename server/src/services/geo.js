@@ -3,6 +3,8 @@
 // Requests reach this server through other servers (phone → Vercel → Render / Cloudflare → here). The country header
 // Cloudflare adds (cf-ipcountry) describes whoever connected to Cloudflare — that is Vercel's server (e.g. Johannesburg
 // or Paris), not the phone — so it can't be trusted when the request came through Vercel. Instead:
+//   0. iCloud Private Relay (Safari with iCloud+): the phone's address is one of Apple's relay addresses; Apple's own
+//      list says which country / city it serves (services/relay.js). Such scans are marked relay: true;
 //   1. x-vercel-ip-country, when Vercel passes it on (Vercel works it out from the phone's own address);
 //   2. otherwise the phone's own IP address (first one in x-forwarded-for) is looked up with a free IP-location
 //      service (ipwho.is, then api.country.is). Results are kept in memory for a day; the IP address is not stored;
@@ -10,6 +12,7 @@
 // Set GEO_LOOKUP=off in server/.env to never contact the IP-location services.
 
 const DAY = 864e5;
+const relay = require('./relay');
 const cache = new Map(); // ip -> { cc, city, t }
 const PRIVATE = /^(10\.|127\.|0\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.|100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.|::1$|::$|f[cd][0-9a-f]{2}:|fe80:)/i;
 const CC = /^[A-Z]{2}$/;
@@ -55,11 +58,14 @@ async function lookup(ip) {
   return out;
 }
 
-// { cc: 'ET' | 'Unknown', city, via } for a request.
+// { cc: 'ET' | 'Unknown', city, via, relay? } for a request.
 async function locate(req) {
+  const ip = clientIp(req);
+  const r = await relay.lookup(ip);
+  if (r) return { ...r, via: 'icloud-relay', relay: true };
   const vc = hdr(req, 'x-vercel-ip-country').toUpperCase();
   if (CC.test(vc) && vc !== 'XX') return { cc: vc, city: hdr(req, 'x-vercel-ip-city').slice(0, 60), via: 'vercel' };
-  const found = await lookup(clientIp(req));
+  const found = await lookup(ip);
   if (found) return { ...found, via: 'ip' };
   const cf = hdr(req, 'cf-ipcountry').toUpperCase();
   if (!viaVercel(req) && CC.test(cf) && cf !== 'XX' && cf !== 'T1') return { cc: cf, city: '', via: 'cloudflare' };
