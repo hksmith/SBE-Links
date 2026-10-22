@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const repo = require('../repositories/qrcodes');
 const settings = require('../repositories/settings');
 const qr = require('../services/qr');
+const geo = require('../services/geo');
 const stats = require('../services/stats');
 const brand = require('../services/brand');
 const xlsx = require('../services/xlsx');
@@ -87,6 +88,17 @@ function forAdmins(router) {
     json(res, { ok: true });
   });
 
+  // Shows how this server sees the location of the request (to check the Country numbers): which address it takes
+  // as the visitor's, the location headers it received, and the country it works out.
+  router.get('/api/qr-location-check', async (req, res) => {
+    const h = n => req.headers[n] || null;
+    json(res, {
+      visitorIp: geo.clientIp(req), cameThroughVercel: geo.viaVercel(req), result: await geo.locate(req),
+      headers: { 'x-forwarded-for': h('x-forwarded-for'), 'x-vercel-forwarded-for': h('x-vercel-forwarded-for'), 'x-real-ip': h('x-real-ip'),
+        'cf-connecting-ip': h('cf-connecting-ip'), 'x-vercel-ip-country': h('x-vercel-ip-country'), 'cf-ipcountry': h('cf-ipcountry') },
+    });
+  });
+
   // Start counting from zero (e.g. after testing the code yourself).
   router.post('/api/qr/:id/reset', async (req, res, { params }) => {
     const q = await repo.get(params.id);
@@ -118,7 +130,8 @@ function forPublic(router) {
     const range = String(req.headers.range || '');
     // Only real visits count: not link-preview bots, not HEAD requests, not the later pieces of a video.
     if (req.method === 'GET' && !stats.BOT.test(ua) && (!range || /^bytes=0-/.test(range))) {
-      repo.recordScan(q.id, qr.scanInfo(req, await visitorSecret())).catch(e => console.error('Could not record scan:', e.message));
+      // Recorded in the background: finding the country can take a moment and must not delay the person scanning.
+      visitorSecret().then(sec => qr.scanInfo(req, sec)).then(info => repo.recordScan(q.id, info)).catch(e => console.error('Could not record scan:', e.message));
     }
     if (q.type === 'link') return redirect(res, q.url);
     if (q.type === 'text') return html(res, qr.textPage(q, b));

@@ -150,7 +150,7 @@ export function QrDetail({ id }) {
             <Breakdown title="Phone system" data={s.os} />
             <Breakdown title="Browser / app" data={s.br} />
             <Breakdown title="Country" data={s.cc} label={c => <>{flag(c)} {regionName(c)}</>}
-              hint={Object.keys(s.cc).length && Object.keys(s.cc).every(k => k === 'Unknown') ? 'The country comes from your host (Vercel or Cloudflare add it). It shows as Unknown when the server is reached directly.' : ''} />
+              hint={Object.keys(s.cc).length && Object.keys(s.cc).every(k => k === 'Unknown') ? 'The country is found from the phone’s own internet address. Unknown means it could not be looked up (or GEO_LOOKUP=off on the server).' : ''} />
             <Breakdown title="Language" data={s.lang} label={langName} />
           </div>
           <div className="card"><h2>Recent scans</h2>

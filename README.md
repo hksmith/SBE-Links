@@ -196,8 +196,11 @@ Deleting a company deletes its page, all its cards, their statistics and sign-in
   25 scans, and an **Excel export** of every scan. Link-preview bots and a phone loading the same code twice within 10 seconds are not
   counted. No IP address is stored — a one-way hash is used only to tell new scanners from returning ones. **Reset statistics** starts
   again from zero (e.g. after testing).
-- **Country** comes from the hosting in front of the server (Vercel adds `x-vercel-ip-country`, Cloudflare `cf-ipcountry`). When the
-  server is reached directly it shows as *Unknown*.
+- **Country** (and city) is found from the **phone's own internet address**. Scans pass through Vercel and Render/Cloudflare first, and
+  the country Cloudflare adds describes Vercel's server (e.g. Johannesburg or Paris), not the phone — so it is not used. The address is
+  looked up with a free IP-location service (ipwho.is, then api.country.is), remembered for a day and never stored. Set
+  `GEO_LOOKUP=off` in `server/.env` to switch the lookups off. To see how the server sees your own location, open
+  `/api/qr-location-check` while signed in as an admin.
 
 ## Footer & branding
 

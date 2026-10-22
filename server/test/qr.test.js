@@ -1,6 +1,7 @@
 // QR codes: admin-only API, file uploads, scan tracking at /q/<code>.  npm test
 process.env.ADMIN_USER = 'admin';
 process.env.ADMIN_PASSWORD = 'test-pass';
+process.env.GEO_LOOKUP = 'off'; // no calls to the IP-location services from tests
 
 const { test, before, after } = require('node:test');
 const assert = require('node:assert');
@@ -152,4 +153,39 @@ test('text QR and custom short codes', async () => {
 test('files over the limit are refused', async () => {
   const r = await req('POST', '/api/qr/files', Buffer.alloc(10 * 1024 * 1024 + 1), { 'Content-Type': 'application/octet-stream' });
   assert.strictEqual(r.status, 413);
+});
+
+test('country: the phone\'s own address decides, not the country of the proxy in between', async () => {
+  const geo = require('../src/services/geo');
+  const fake = (headers, remote = '10.0.0.5') => ({ headers, socket: { remoteAddress: remote } });
+  // Vercel passes its own country header: used as is
+  assert.strictEqual((await geo.locate(fake({ 'x-vercel-ip-country': 'ET', 'x-vercel-ip-city': 'Addis%20Ababa' }))).city, 'Addis Ababa');
+  // Came through Vercel, Cloudflare labels it with Vercel's location (ZA): not trusted
+  const viaVercel = { 'x-forwarded-for': '196.188.1.1, 76.76.21.1', 'cf-connecting-ip': '76.76.21.1', 'cf-ipcountry': 'ZA' };
+  assert.strictEqual((await geo.locate(fake(viaVercel))).cc, 'Unknown');
+  // Phone straight to Cloudflare: its country header is right
+  assert.strictEqual((await geo.locate(fake({ 'x-forwarded-for': '196.188.1.1', 'cf-connecting-ip': '196.188.1.1', 'cf-ipcountry': 'ET' }))).cc, 'ET');
+
+  // With lookups on, the phone's address is looked up (first service, then the second one when it fails)
+  const real = globalThis.fetch, asked = [];
+  process.env.GEO_LOOKUP = 'on';
+  try {
+    globalThis.fetch = async url => { asked.push(String(url)); return { ok: true, json: async () => ({ success: true, country_code: 'ET', city: 'Addis Ababa' }) }; };
+    let r = await geo.locate(fake(viaVercel));
+    assert.deepStrictEqual([r.cc, r.city, r.via], ['ET', 'Addis Ababa', 'ip']);
+    assert.match(asked[0], /ipwho\.is\/196\.188\.1\.1/);
+    await geo.locate(fake(viaVercel));
+    assert.strictEqual(asked.length, 1); // remembered
+    globalThis.fetch = async url => { asked.push(String(url)); if (/ipwho/.test(url)) throw new Error('down'); return { ok: true, json: async () => ({ country: 'KE' }) }; };
+    r = await geo.locate(fake({ 'x-forwarded-for': '41.90.1.1' }));
+    assert.strictEqual(r.cc, 'KE');
+    assert.strictEqual((await geo.locate(fake({}, '127.0.0.1'))).cc, 'Unknown'); // private addresses are never looked up
+    assert.ok(!asked.some(u => u.includes('127.0.0.1')));
+  } finally { globalThis.fetch = real; process.env.GEO_LOOKUP = 'off'; geo.clearCache(); }
+
+  const r = await req('GET', '/api/qr-location-check', undefined, { 'x-forwarded-for': '196.188.1.1, 76.76.21.1', 'cf-ipcountry': 'ZA', 'x-vercel-id': 'jnb1::abc' });
+  const j = await r.json();
+  assert.strictEqual(j.visitorIp, '196.188.1.1');
+  assert.strictEqual(j.cameThroughVercel, true);
+  assert.strictEqual(j.result.cc, 'Unknown');
 });

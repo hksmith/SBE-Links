@@ -1,6 +1,7 @@
 // QR codes: validation, who-scanned details, statistics and the small pages a scan can show.
 const crypto = require('crypto');
 const repo = require('../repositories/qrcodes');
+const geo = require('./geo');
 const { S, safeUrl } = require('./sanitize');
 
 const TYPES = ['link', 'file', 'text'];
@@ -52,23 +53,21 @@ function parseAgent(ua) {
   return { os, dev, br };
 }
 
-const firstIp = req => String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || '';
-const header = (req, ...names) => { for (const n of names) { const v = req.headers[n]; if (v) return decodeURIComponent(String(v)).slice(0, 60); } return ''; };
 
 // Everything recorded about one scan. The visitor is a one-way hash (no IP address is stored),
-// used only to tell first-time scanners from people scanning again.
-function scanInfo(req, secret) {
+// used only to tell first-time scanners from people scanning again. Country and city: see services/geo.js.
+async function scanInfo(req, secret) {
   const ua = String(req.headers['user-agent'] || '');
-  const ip = firstIp(req);
-  const cc = header(req, 'x-vercel-ip-country', 'cf-ipcountry', 'x-country-code', 'x-appengine-country').toUpperCase().slice(0, 2);
-  const city = header(req, 'x-vercel-ip-city', 'cf-ipcity', 'x-appengine-city');
+  const ip = geo.clientIp(req);
+  const t = Date.now();
+  const { cc, city } = await geo.locate(req);
   const lang = String(req.headers['accept-language'] || '').split(/[,;]/)[0].trim().slice(0, 12) || 'Unknown';
   let ref = '';
   try { ref = req.headers.referer ? new URL(req.headers.referer).hostname.slice(0, 80) : ''; } catch { /* ignore */ }
   return {
-    t: Date.now(),
+    t,
     v: crypto.createHmac('sha256', String(secret || 'qr')).update(ip + '|' + ua).digest('hex').slice(0, 20),
-    ...parseAgent(ua), cc: cc && cc !== 'XX' ? cc : 'Unknown', city, lang, ref,
+    ...parseAgent(ua), cc, city, lang, ref,
   };
 }
 
