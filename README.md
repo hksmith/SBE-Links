@@ -55,6 +55,9 @@ sbpo-link-tree/
 | `media` | Uploaded images (photos, logos, gallery, icons), referenced as `/media/<id>` |
 | `settings` | Branding (footer logo, its size, footer text) and the session-signing secret |
 | `users` | People who can sign in besides the main admin: role (`admin` / `viewer`), which cards a viewer can see, hashed password |
+| `qrcodes` | One document per QR code: name, short code, what it opens (link / file / text), design, running scan totals |
+| `scans` | Every QR code scan (`q` QR id, `t` time, device, system, browser/app, country, language, `nw` first scan by this visitor) |
+| `qrfiles` | Files QR codes open (PDF, photos, videos, documents, up to 10 MB each) |
 | `companies` | One document per company: page address, shared design (theme), company page (logo, details, links), card template |
 
 ## Running it
@@ -138,6 +141,26 @@ For a company that wants cards for its people, click **New company** (top bar or
 
 Deleting a company deletes its page, all its cards, their statistics and sign-ins.
 
+## QR codes (admins only)
+
+**QR codes** in the top bar (admins only — viewers, company admins and card owners never see it and get `403` from its API).
+
+- **New QR code**: give it a name and choose what it opens — a **link**, a **file** (PDF, photo, video, Word, Excel, zip…, up to 10 MB;
+  PDFs, photos and videos open on the phone, other files download) or a short **text** (shown on a simple page, links clickable).
+  Optional: a note only you see, and your own short code (e.g. `/q/expo`).
+- The printed code always holds `<your site>/q/<code>`. So you can **change what it opens later** (a new link, a newer PDF) without
+  reprinting, **pause** it (scanning then shows “This QR code is not active”, and isn’t counted), or delete it.
+- **Design**: square, rounded or dot style, colours, and a logo in the middle (the code then uses the highest error correction so it
+  still scans). **Download PNG or SVG**, optionally with the name printed under the code. No extra package is needed: the QR encoder is
+  built in (`frontend/src/lib/qrcode.js`).
+- **Tracking** for each code: total scans, unique scanners (new vs. again), today, last 7 days, a 30-day chart, time of day, day of week,
+  device, phone system, browser / app (Telegram, Facebook, Instagram… in-app browsers are recognised), country, language, the latest
+  25 scans, and an **Excel export** of every scan. Link-preview bots and a phone loading the same code twice within 10 seconds are not
+  counted. No IP address is stored — a one-way hash is used only to tell new scanners from returning ones. **Reset statistics** starts
+  again from zero (e.g. after testing).
+- **Country** comes from the hosting in front of the server (Vercel adds `x-vercel-ip-country`, Cloudflare `cf-ipcountry`). When the
+  server is reached directly it shows as *Unknown*.
+
 ## Footer & branding
 
 On the dashboard, the **Footer & branding** card (admins) sets what appears at the bottom of every link tree page, the admin pages and the sign-in page:
@@ -186,13 +209,14 @@ Existing accounts (same id) are skipped, so running it twice is safe.
 | URL | |
 |---|---|
 | `/` | Redirects to `/admin` |
-| `/admin` | Admin app (login page when signed out). Screens: `#/`, `#/users`, `#/edit/<id>`, `#/stats/<id>` |
+| `/admin` | Admin app (login page when signed out). Screens: `#/`, `#/users`, `#/qr`, `#/qr/<id>`, `#/edit/<id>`, `#/stats/<id>` |
 | `/<slug>` | Public profile page, or a company page |
 | `/<company>/<slug>` | A card of a company (`/n/<company>/<slug>` for NFC) |
 | `/n/<slug>` | Same page, counted as an NFC tap (write this to the card) |
 | `/go/<account>/<link>` | Tracked redirect for a link button |
 | `/vcf/<account>/<block>` | “Save My Contact”: the vCard with contact headers (counted as a click) |
 | `/media/<id>` | Uploaded image |
+| `/q/<code>` | A QR code: records the scan, then opens its link, file or text |
 | `/api/...` | Admin JSON API (requires login) |
 
 ## Tests
@@ -200,4 +224,4 @@ Existing accounts (same id) are skipped, so running it twice is safe.
 ```bash
 npm test
 ```
-Runs the API end to end (login, import, create/edit/delete, tracking, logo placement, user roles and permissions, vCard serving) against an in-memory stand-in, so no MongoDB is needed.
+Runs the API end to end (QR codes: permissions, uploads, scan tracking, pausing, export; login, import, create/edit/delete, tracking, logo placement, user roles and permissions, vCard serving) against an in-memory stand-in, so no MongoDB is needed.

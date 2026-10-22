@@ -45,6 +45,18 @@ function readJson(req, limit = 25e6) {
   });
 }
 
+// Reads a raw request body (file uploads). Resolves to a Buffer, or null when it is larger than `limit`.
+function readRaw(req, limit) {
+  return new Promise(resolve => {
+    if (+req.headers['content-length'] > limit) { req.resume(); req.on('end', () => resolve(null)); req.on('error', () => resolve(null)); return; }
+    const chunks = [];
+    let size = 0, over = false;
+    req.on('data', c => { size += c.length; if (size > limit) over = true; else chunks.push(c); });
+    req.on('end', () => resolve(over ? null : Buffer.concat(chunks)));
+    req.on('error', () => resolve(null));
+  });
+}
+
 // Serves a file from `root`, refusing anything that would escape it.
 function sendStatic(res, root, relPath, { cache = 'no-cache' } = {}) {
   const file = path.resolve(root, '.' + path.posix.normalize('/' + relPath));
@@ -65,4 +77,4 @@ function sendFile(res, buf, name, type) {
   res.end(buf);
 }
 
-module.exports = { origin, sendFile, json, html, redirect, notFound, readJson, sendStatic };
+module.exports = { origin, sendFile, json, html, redirect, notFound, readJson, readRaw, sendStatic };

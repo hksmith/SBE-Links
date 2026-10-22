@@ -3,7 +3,7 @@ const crypto = require('crypto');
 const ICONS = require('../data/icons');
 
 // Addresses used by the app itself (and by the admin app's files when it is hosted on Vercel).
-const RESERVED = ['admin', 'api', 'go', 'n', 'vcf', 'login', 'logout', 'media', 'favicon.ico', 'assets', 'brand.json', 'index.html', 'login.html'];
+const RESERVED = ['admin', 'api', 'go', 'n', 'vcf', 'login', 'logout', 'media', 'q', 'favicon.ico', 'assets', 'brand.json', 'index.html', 'login.html'];
 // A person's details. Links can use them as {phone}, {email}, …; any other Excel column works the same way.
 const FIELDS = ['phone', 'email', 'whatsapp', 'website', 'linkedin', 'address'];
 const FONTS = ['Inter', 'Poppins', 'DM Sans', 'Montserrat', 'Playfair Display', 'Lora', 'Libre Baskerville', 'Linden Hill', 'Merriweather', 'Space Grotesk', 'Space Mono', 'Orbitron', 'Bebas Neue', 'Pacifico'];

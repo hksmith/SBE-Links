@@ -256,6 +256,7 @@ module.exports = router => {
   });
 
   companyRoutes.forAdmins(router);
+  require('./qr').forAdmins(router); // QR codes: admins only
 
   router.all('/api/*', (req, res) => json(res, { error: 'nf' }, 404));
 };

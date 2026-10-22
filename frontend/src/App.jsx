@@ -12,6 +12,8 @@ import { StatsView } from './views/StatsView.jsx';
 import { Editor } from './editor/Editor.jsx';
 import { FirstPassword } from './views/FirstPassword.jsx';
 import { CompanyView } from './views/CompanyView.jsx';
+import { QrCodes } from './views/QrCodes.jsx';
+import { QrDetail } from './views/QrDetail.jsx';
 
 const EMPTY_BRAND = { logo: '', logoSize: 18, text: '' };
 
@@ -32,7 +34,7 @@ export default function App() {
 
   // Keep people on screens their role allows.
   let { name, id } = route;
-  if (me && !isAdmin && ['edit', 'users', 'cpage', 'ctpl'].includes(name)) { name = name === 'edit' && id ? 'stats' : ''; }
+  if (me && !isAdmin && ['edit', 'users', 'cpage', 'ctpl', 'qr'].includes(name)) { name = name === 'edit' && id ? 'stats' : ''; }
   useEffect(() => {
     if (me && name !== route.name) navigate(name ? `/${name}/${id ?? ''}` : '/');
   }, [me, name, route.name, id]);
@@ -42,6 +44,7 @@ export default function App() {
   else if (me) {
     if (me.mustChange) screen = <FirstPassword />;
     else if (name === 'users') screen = <Users />;
+    else if (name === 'qr') screen = id ? <QrDetail key={id} id={id} /> : <QrCodes />;
     else if (name === 'edit' && id) screen = <Editor key={id} id={id} />;
     else if (name === 'cpage' && id) screen = <Editor key={'p' + id} id={id} kind="page" />;
     else if (name === 'ctpl' && id) screen = <Editor key={'t' + id} id={id} kind="template" />;

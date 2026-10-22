@@ -113,6 +113,6 @@ class Collection {
   async deleteMany(filter) { const before = this.docs.length; this.docs = this.docs.filter(d => !matches(d, filter)); return { deletedCount: before - this.docs.length }; }
 }
 
-const fakeDb = () => Object.fromEntries(['accounts', 'companies', 'events', 'stats', 'media', 'settings', 'users'].map(n => [n, new Collection()]));
+const fakeDb = () => Object.fromEntries(['accounts', 'companies', 'events', 'stats', 'media', 'settings', 'users', 'qrcodes', 'scans', 'qrfiles'].map(n => [n, new Collection()]));
 
 module.exports = { fakeDb, Collection };

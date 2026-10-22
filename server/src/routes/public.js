@@ -84,6 +84,8 @@ module.exports = router => {
   router.get('/vcf/:account', vcard);
   router.get('/vcf/:account/:block', vcard);
 
+  require('./qr').forPublic(router); // /q/<code>: tracked QR codes
+
   // NFC cards point at /n/<slug> so taps can be told apart from normal visits.
   router.get('/n/:slug', (req, res, { params }) => showProfile(req, res, params.slug, 'nfc'));
   router.get('/n/:company/:slug', (req, res, { params }) => showProfile(req, res, params.company, 'nfc', params.slug));

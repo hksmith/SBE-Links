@@ -145,3 +145,39 @@ details.me div{width:180px;top:40px}details.me a{display:block}
 .dlg .grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}@media(max-width:520px){.dlg .grid2{grid-template-columns:1fr}}
 .steps{margin:0 0 12px;padding-left:20px;font-size:14px;line-height:1.6}.lnk{border:0;background:none;padding:0;color:var(--a);font-weight:600;cursor:pointer;display:inline-flex;gap:4px;align-items:center}
 .skipped{max-height:180px;overflow:auto;font-size:13px;margin-top:6px;display:flex;flex-direction:column;gap:4px}
+
+/* ---------- QR codes ---------- */
+.qr-th{display:block;flex:none;border-radius:12px;border:1px solid var(--line);background:#fff;padding:3px;overflow:hidden}.qr-th svg{display:block;width:100%;height:100%}
+.qr-row.off{opacity:.6}.qr-row .ai b{display:flex;align-items:center;gap:8px}
+.qr-dest{display:inline-flex;align-items:center;gap:5px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}
+.qr-dest svg{flex:none}
+.qr-row button{display:inline-flex;align-items:center;gap:6px}
+.qr-filter{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}.qr-filter input{flex:1;min-width:200px;margin:0}.qr-filter .seg{margin:0;flex:none}.qr-filter .seg button{padding:7px 14px}
+.usr-actions .blk{display:inline-flex;align-items:center;gap:8px}
+.qr-seg{margin:0}.qr-seg button{display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.upl{display:flex;align-items:center;gap:10px;padding:10px;border:1px dashed #c9d2e3;border-radius:12px;background:var(--in);min-height:58px}
+.upl .vn{flex:1;min-width:0}.upl .vn b{display:block;font-size:13px;word-break:break-all}.upl .vn small{color:var(--mut);font-size:12px}
+.upl-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:10px;border-style:dashed}
+.upl-p{flex:1}.upl-p span{display:block;font-size:13px;margin-bottom:6px;color:var(--mut)}
+.qr-more{border:0;background:none;color:var(--a);padding:0;font-weight:600;margin:-4px 0 10px}
+.qr-title{max-width:40vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qr-ed{display:grid;grid-template-columns:340px minmax(0,1fr);gap:22px;align-items:start}
+@media(max-width:900px){.qr-ed{grid-template-columns:1fr}}
+.qr-panel .card{margin-bottom:14px}
+.qr-big{background:#fff;border-radius:14px;padding:6px;border:1px solid var(--line)}.qr-big svg{display:block;width:100%;height:auto}.qr-big.off{opacity:.45}
+.qr-link{margin:12px 0 10px}.qr-link span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qr-dl{display:flex;gap:8px}.qr-dl button{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px}
+.qr-cap{margin-top:10px!important;font-size:13px;color:var(--mut)}
+.qr-opens{display:flex;gap:10px;align-items:flex-start}.qr-opens .chip{flex:none}.qr-opens div{min-width:0}.qr-opens b{display:block}.qr-opens small{color:var(--mut);display:block;overflow-wrap:anywhere;white-space:pre-line}
+.qr-acts{display:flex;align-items:center;gap:8px;margin-top:14px}
+.qr-sw{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px}.qr-sw button{width:34px;height:34px;padding:0;border-radius:10px;display:grid;place-items:center}.qr-sw button i{width:16px;height:16px;border-radius:4px}.qr-sw button.on{border-color:var(--a);box-shadow:0 0 0 3px rgba(79,70,229,.2)}
+.qr-lg{width:40px;height:40px;object-fit:contain;border:1px solid var(--line);border-radius:8px;background:#fff}
+.qr-danger{display:flex;gap:8px;justify-content:space-between;padding:12px}.qr-danger button:last-child{color:#dc2626;display:inline-flex;align-items:center;gap:6px}.qr-danger button:last-child:hover{border-color:#dc2626}
+.qr-meta{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;margin:-4px 0 16px;color:var(--mut);font-size:13px}.qr-meta b{color:var(--ink);font-weight:600}.qr-meta button{display:inline-flex;align-items:center;gap:6px}
+.qr-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:0 16px}
+.pc{color:var(--mut);font-weight:400;font-size:11px;margin-left:6px;display:inline-block;min-width:30px}
+.qr-recent td{vertical-align:middle}.qr-recent td:first-child b{display:block;font-size:13px}.qr-recent td:first-child small{color:var(--mut);font-size:11px}
+.qr-recent td:last-child{width:60px}.tag.rep{background:var(--in);color:var(--mut)}
+@media(max-width:640px){.qr-recent td:nth-child(3){display:none}}
+.card td.empty{text-align:left;font-weight:400;color:var(--mut)}
+.qr-panel .cr input{width:36px;height:36px}

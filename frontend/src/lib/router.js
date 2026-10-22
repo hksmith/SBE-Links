@@ -4,6 +4,7 @@
 //   #/edit/<id>   account editor (admins)
 //   #/stats/<id>  read-only statistics (viewers)
 //   #/company/<id>  a company: its cards and combined statistics
+//   #/qr          QR codes (admins) · #/qr/<id>  one QR code: design, downloads, scan statistics
 //   #/cpage/<id>  company page editor · #/ctpl/<id>  company card design editor (admins)
 import { useEffect, useState } from 'react';
 

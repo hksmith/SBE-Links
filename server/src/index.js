@@ -30,6 +30,8 @@ async function main() {
 
   // Remove images nobody uses any more, a few times a day.
   setInterval(() => media.collectGarbage().catch(e => console.error('Media cleanup failed:', e.message)), 6 * 3600e3).unref();
+  // …and QR code files that were uploaded but never used.
+  setInterval(() => require('./repositories/qrcodes').removeUnusedFiles().catch(e => console.error('QR file cleanup failed:', e.message)), 6 * 3600e3).unref();
 
   const shutdown = () => {
     setTimeout(() => process.exit(0), 3000).unref();

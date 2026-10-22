@@ -14,6 +14,7 @@ export function TopBar() {
       <span className="logo"><i className={brand.logo ? 'has' : ''}>{brand.logo ? <img src={brand.logo} alt="" /> : 'S'}</i>SBPO Link Tree</span>
       <span className="sp" />
       {isAdmin && <>
+        <button onClick={() => navigate('/qr')}><Icon k="qr" size={14} /> QR codes</button>
         <button onClick={() => navigate('/users')}><Icon k="people" size={14} /> Users</button>
         <button onClick={newCompany}><Icon k="building" size={14} /> New company</button>
         <button className="pri" onClick={newAccount}>+ New account</button>

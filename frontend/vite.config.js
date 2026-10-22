@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 
 const SERVER = process.env.API_URL || 'http://localhost:3000';
-const proxied = ['/api', '/login', '/logout', '/media', '/n/', '/go/', '/vcf/'];
+const proxied = ['/api', '/login', '/logout', '/media', '/n/', '/go/', '/vcf/', '/q/'];
 
 export default defineConfig({
   base: process.env.VITE_BASE ?? (process.env.VERCEL ? '/' : '/admin/'),

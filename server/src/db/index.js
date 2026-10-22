@@ -1,6 +1,6 @@
 // Holds the MongoDB collections used by the repositories.
 // `connect()` opens the real database; tests call `use()` with in-memory stand-ins.
-const COLLECTIONS = ['accounts', 'companies', 'events', 'stats', 'media', 'settings', 'users'];
+const COLLECTIONS = ['accounts', 'companies', 'events', 'stats', 'media', 'settings', 'users', 'qrcodes', 'scans', 'qrfiles'];
 const db = {};
 let client = null;
 
@@ -33,6 +33,12 @@ async function ensureIndexes() {
   await db.events.createIndex({ a: 1, k: 1, t: -1 });
   await db.media.createIndex({ created: 1 });
   await db.users.createIndex({ created: 1 });
+  // QR codes: short code is the address printed in the QR (/q/<code>); scans are the tracked hits.
+  await db.qrcodes.createIndex({ code: 1 }, { unique: true });
+  await db.qrcodes.createIndex({ created: -1 });
+  await db.scans.createIndex({ q: 1, t: -1 });
+  await db.scans.createIndex({ q: 1, v: 1, t: -1 });
+  await db.qrfiles.createIndex({ created: 1 });
 }
 
 async function close() {
