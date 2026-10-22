@@ -1,6 +1,7 @@
 // Editor: top bar, Link in Bio / Design / Analytics tabs, live phone preview, autosave and undo.
 // Edits a card (kind 'account'), a company page ('page') or a company's card design ('template').
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { LiveBadge } from '../components/Live.jsx';
 import { O, cls } from '../lib/utils.js';
 import { navigate } from '../lib/router.js';
 import { Icon } from '../components/Icon.jsx';
@@ -26,9 +27,16 @@ export function Editor({ id, kind = 'account' }) {
   const [bsTab, setBsTab] = useState('Popular');
 
   const co = cur && cur.companyInfo;
-  const home = kind !== 'account' || (cur && cur.company) ? `/company/${co ? co.id : id}` : '/';
+  const home = kind !== 'account' || (cur && cur.company) ? `/company/${co ? co.id : id}` : '/cards';
   const back = async () => { if (ed.dirty.current) await ed.save(); navigate(home); };
-  const backBtn = <button onClick={back}><Icon k="back" size={14} /> {co ? co.name : 'Accounts'}</button>;
+  const backBtn = <button onClick={back}><Icon k="back" size={14} /> {co ? co.name : 'Cards'}</button>;
+  // The Analytics tab refreshes by itself while it is open.
+  const [live, setLive] = useState(0);
+  useEffect(() => {
+    if (tab !== 'stats') return;
+    const t = setInterval(() => { if (!document.hidden) ed.reloadStats().then(() => setLive(Date.now())).catch(() => {}); }, 10e3);
+    return () => clearInterval(t);
+  }, [tab, ed.reloadStats]);
   if (!cur || !stats) return <header className="top">{backBtn}</header>;
 
   const path = cur.path || cur.slug, pageUrl = `${O}/${path}`;
@@ -39,8 +47,9 @@ export function Editor({ id, kind = 'account' }) {
     <EditorContext.Provider value={ed}>
       <header className="top">
         {backBtn}
-        <b>{title}</b>
+        <div className="ph-t"><h1>{title}</h1></div>
         <span className="sp" />
+        {tab === 'stats' && <LiveBadge updated={live} />}
         {kind !== 'template' && <>
           <div className="dom">
             <span>{pageUrl}</span>

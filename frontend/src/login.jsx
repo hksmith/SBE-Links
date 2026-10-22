@@ -10,7 +10,18 @@ function Login() {
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const [brand, setBrand] = useState(null);
-  useEffect(() => { fetch('/brand.json').then(r => r.json()).then(setBrand).catch(() => setBrand({ text: 'Powered by Shaggar BPO Enterprise' })); }, []);
+  useEffect(() => {
+    fetch('/brand.json').then(r => r.json()).then(b => {
+      setBrand(b);
+      const s = b.system;
+      if (!s) return;
+      document.title = 'Sign in · ' + s.name;
+      document.documentElement.style.setProperty('--a', s.accent);
+      document.documentElement.style.setProperty('--b', s.accent2);
+      if (s.logo) { const ic = document.querySelector('link[rel=icon]'); if (ic) { ic.removeAttribute('type'); ic.href = s.logo; } }
+    }).catch(() => setBrand({ text: 'Powered by Shaggar BPO Enterprise' }));
+  }, []);
+  const sys = (brand && brand.system) || { name: 'SBPO Link Tree', logo: '' };
 
   const submit = async e => {
     e.preventDefault();
@@ -27,7 +38,10 @@ function Login() {
 
   return (
     <form id="login-form" autoComplete="on" onSubmit={submit}>
-      <h1>⚡ SBPO Link Tree</h1>
+      <h1 className="lg-h">
+        <i className={sys.logo ? 'has' : ''}>{sys.logo ? <img src={sys.logo} alt="" /> : (sys.name.trim()[0] || 'S').toUpperCase()}</i>
+        <span>{brand ? sys.name : ''}</span>
+      </h1>
       <input name="username" placeholder="Username" autoComplete="username" required value={u} onChange={e => setU(e.target.value)} />
       <input name="password" type="password" placeholder="Password" autoComplete="current-password" required value={p} onChange={e => setP(e.target.value)} />
       <button disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>

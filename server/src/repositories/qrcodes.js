@@ -79,6 +79,13 @@ module.exports = {
   async recentScans(qrId, limit) {
     return db.scans.find({ q: qrId }, { projection: { _id: 0, q: 0, v: 0 } }).sort({ t: -1 }).limit(limit).toArray();
   },
+  // Dashboard: scans of every QR code.
+  async allScansSince(t) {
+    return db.scans.find({ t: { $gte: t } }, { projection: { _id: 0, t: 1 } }).toArray();
+  },
+  async recentAll(limit) {
+    return db.scans.find({}, { projection: { _id: 0, v: 0 } }).sort({ t: -1 }).limit(limit).toArray();
+  },
   async allScans(qrId) {
     return db.scans.find({ q: qrId }, { projection: { _id: 0, q: 0 } }).sort({ t: -1 }).toArray();
   },

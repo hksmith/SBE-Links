@@ -4,6 +4,7 @@ const path = require('path');
 const config = require('../config');
 const auth = require('../services/auth');
 const brand = require('../services/brand');
+const system = require('../services/system');
 const { json, html, redirect, readJson, sendStatic } = require('../lib/http');
 
 const NOT_BUILT = `<!doctype html><meta charset="utf-8"><title>SBPO Link Tree</title>
@@ -38,8 +39,8 @@ module.exports = router => {
     return sendStatic(res, config.clientDir, params.rest, hashed ? { cache: 'public, max-age=31536000, immutable' } : undefined);
   });
 
-  // Footer text + logo for the sign-in page (public: it is shown on every profile page anyway).
-  router.get('/brand.json', async (req, res) => json(res, await brand.get()));
+  // Footer text + logo, and the system name / logo / colours, for the sign-in page (public: nothing secret in them).
+  router.get('/brand.json', async (req, res) => json(res, { ...(await brand.get()), system: await system.get() }));
 
   router.get('/favicon.ico', (req, res) => sendStatic(res, path.join(config.clientDir, 'assets'), 'favicon.svg'));
 };

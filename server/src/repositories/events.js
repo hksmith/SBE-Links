@@ -38,6 +38,13 @@ module.exports = {
   async recentClicksMany(ids, limit) {
     return db.events.find({ a: { $in: ids }, k: 'click' }, { projection: { _id: 0 } }).sort({ t: -1 }).limit(limit).toArray();
   },
+  // Dashboard: every view / tap / click of these pages since t, and the latest of them.
+  async activitySince(ids, t) {
+    return db.events.find({ a: { $in: ids }, t: { $gte: t } }, { projection: { _id: 0, t: 1, k: 1, src: 1 } }).toArray();
+  },
+  async recentMany(ids, limit) {
+    return db.events.find({ a: { $in: ids } }, { projection: { _id: 0 } }).sort({ t: -1 }).limit(limit).toArray();
+  },
   async totals() {
     return db.stats.find({}).toArray();
   },

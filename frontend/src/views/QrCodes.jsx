@@ -10,7 +10,8 @@ import { qrSvg, qrUrl, downloadPng } from '../lib/qrdraw.js';
 import { Icon } from '../components/Icon.jsx';
 import { CopyButton } from '../components/CopyButton.jsx';
 import { Dialog, showDialog } from '../components/Dialog.jsx';
-import { TopBar, Footer } from '../components/TopBar.jsx';
+import { PageHeader } from '../components/TopBar.jsx';
+import { useLive } from '../lib/live.js';
 
 export const TYPE = { link: 'Link', file: 'File', text: 'Text' };
 export const TYPE_ICON = { link: 'link', file: 'file', text: 'text' };
@@ -31,6 +32,7 @@ export function QrCodes() {
 
   const load = useCallback(async () => setList(await getJson('/api/qr')), []);
   useEffect(() => { load().catch(() => setList([])); }, [load]);
+  const updated = useLive(load);
 
   const add = async () => {
     const made = await showDialog(close => <QrDialog onClose={close} />);
@@ -42,21 +44,15 @@ export function QrCodes() {
   const T = (list || []).reduce((a, x) => ({ s: a.s + x.scans, u: a.u + x.unique, on: a.on + (x.active ? 1 : 0) }), { s: 0, u: 0, on: 0 });
 
   return <>
-    <TopBar />
+    <PageHeader title="QR codes" sub="For a link, a file or a short text — every scan is tracked. What a code opens can be changed later without reprinting." live={list ? updated : undefined}>
+      <button className="pri" onClick={add} disabled={!list}><Icon k="qr" size={14} /> New QR code</button>
+    </PageHeader>
     <main>
-      <div className="hero">
-        <button onClick={() => navigate('/')}><Icon k="back" size={14} /> Accounts</button>
-        <h1 style={{ marginTop: 12 }}>QR codes</h1>
-        <p>Make a QR code for a link, a file (PDF, photo, video, any document) or a short text, name it, and see every scan. What a code opens can be changed later without reprinting it.</p>
-      </div>
       <div className="stats">
         <div className="st"><small>QR codes</small><div>{list ? list.length : '–'}</div></div>
         <div className="st"><small>Total scans</small><div>{list ? T.s : '–'}</div></div>
         <div className="st"><small>Unique scanners</small><div>{list ? T.u : '–'}</div></div>
         <div className="st"><small>Active</small><div>{list ? T.on : '–'}</div></div>
-      </div>
-      <div className="usr-actions">
-        <button className="blk" onClick={add} disabled={!list}><Icon k="qr" size={16} /> New QR code</button>
       </div>
       <div className="qr-filter">
         <input placeholder="Search QR codes…" value={q} onChange={e => setQ(e.target.value)} />
@@ -84,7 +80,6 @@ export function QrCodes() {
         {list && !shown.length && <p style={{ color: 'var(--mut)' }}>{list.length ? 'No QR codes match.' : 'No QR codes yet. Click “New QR code”.'}</p>}
       </div>
     </main>
-    <Footer />
   </>;
 }
 

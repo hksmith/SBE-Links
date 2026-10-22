@@ -8,7 +8,7 @@ export function Chart({ days }) {
   return <>
     <svg viewBox={`0 0 ${W} ${H}`} width="100%">
       {days.map((d, i) => (
-        <rect key={i} x={Pd + i * bw + 4} y={y(d.v)} width={bw - 8} height={H - Pd - y(d.v)} rx="4" fill="rgba(79,70,229,.55)"><title>{`${d.d}: ${d.v} views`}</title></rect>
+        <rect key={i} x={Pd + i * bw + 4} y={y(d.v)} width={bw - 8} height={H - Pd - y(d.v)} rx="4" style={{ fill: 'rgba(var(--a-rgb),.55)' }}><title>{`${d.d}: ${d.v} views`}</title></rect>
       ))}
       <path d={days.map((d, i) => `${i ? 'L' : 'M'}${Pd + i * bw + bw / 2},${y(d.c)}`).join(' ')} fill="none" stroke="#f59e0b" strokeWidth="3" />
       {days.map((d, i) => i % 3 ? null : <text key={'t' + i} x={Pd + i * bw + bw / 2} y={H - 6} fill="#66728c" fontSize="10" textAnchor="middle">{d.d.slice(5)}</text>)}

@@ -38,6 +38,7 @@ async function ensureIndexes() {
   await db.qrcodes.createIndex({ created: -1 });
   await db.scans.createIndex({ q: 1, t: -1 });
   await db.scans.createIndex({ q: 1, v: 1, t: -1 });
+  await db.scans.createIndex({ t: -1 });
   await db.qrfiles.createIndex({ created: 1 });
 }
 

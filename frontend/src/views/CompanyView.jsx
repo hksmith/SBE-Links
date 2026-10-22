@@ -10,31 +10,33 @@ import { navigate } from '../lib/router.js';
 import { Icon } from '../components/Icon.jsx';
 import { Menu } from '../components/Menu.jsx';
 import { CopyButton } from '../components/CopyButton.jsx';
-import { TopBar, Footer } from '../components/TopBar.jsx';
+import { PageHeader } from '../components/TopBar.jsx';
+import { useLive } from '../lib/live.js';
 import { Chart, Table } from './Analytics.jsx';
 import { deleteAccount } from './accountActions.jsx';
 import { cardSignIn } from './loginDetails.jsx';
 import { addMember, importMembers, downloadSignIns, downloadTemplate, deleteCompany, companyAdminSignIn } from './companyActions.jsx';
 
 export function CompanyView({ id }) {
-  const { isAdmin: admin, me } = useApp();
+  const { isAdmin: admin } = useApp();
   const [c, setC] = useState(null);
   const [tab, setTab] = useState('cards');
   const [q, setQ] = useState('');
 
   const load = useCallback(async () => setC(await getJson('/api/companies/' + id)), [id]);
   useEffect(() => { load().catch(() => { toast('That company was not found', { error: true }); navigate('/'); }); }, [load]);
+  const updated = useLive(load);
+  const back = admin ? ['/companies', 'Companies'] : null;
 
-  if (!c) return <TopBar />;
+  if (!c) return <PageHeader title="Company" back={back} />;
 
   const s = c.stats, url = `${O}/${c.slug}`, f = q.toLowerCase();
   const shown = c.members.filter(a => (a.name + a.slug + a.title + a.department).toLowerCase().includes(f));
   const run = fn => async e => { e && e.stopPropagation(); if (await fn()) load(); };
 
   return <>
-    <TopBar />
+    <PageHeader title={c.name} sub={`${c.members.length} card${c.members.length === 1 ? '' : 's'}`} back={back} live={updated} />
     <main>
-      {(admin || !me.company) && <button onClick={() => navigate('/')} style={{ marginBottom: 12 }}><Icon k="back" size={14} /> Dashboard</button>}
       <div className="co-hero">
         {c.logo ? <img className="co-logo" src={c.logo} alt="" /> : <div className="co-logo none"><Icon k="building" size={30} /></div>}
         <div className="ai">
@@ -109,7 +111,6 @@ export function CompanyView({ id }) {
         {!shown.length && <p style={{ color: 'var(--mut)' }}>{f ? 'No one matches your search.' : admin ? 'No cards yet. Set the company page and card design, then “+ Add card” or “Import from Excel”.' : 'No cards yet.'}</p>}
       </> : <CompanyStats c={c} />}
     </main>
-    <Footer />
   </>;
 }
 

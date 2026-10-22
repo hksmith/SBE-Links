@@ -37,7 +37,7 @@ export function BrandingCard() {
   return (
     <div className="card">
       <h2>Footer &amp; branding</h2>
-      <small className="hint" style={{ marginTop: -4 }}>Shown at the bottom of every link tree page and the admin pages. The logo also appears in this header.</small>
+      <small className="hint" style={{ marginTop: -4 }}>Shown at the bottom of every link tree page, the admin pages and the sign-in page.</small>
 
       <div className="brand-grid">
         <div>

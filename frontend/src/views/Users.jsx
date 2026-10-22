@@ -5,10 +5,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useApp } from '../AppContext.js';
 import { api, getJson, send } from '../lib/api.js';
 import { toast } from '../lib/toast.js';
-import { navigate } from '../lib/router.js';
 import { Icon } from '../components/Icon.jsx';
 import { Dialog, showDialog, confirmDialog } from '../components/Dialog.jsx';
-import { TopBar, Footer } from '../components/TopBar.jsx';
+import { PageHeader } from '../components/TopBar.jsx';
 import { showLoginDetails } from './loginDetails.jsx';
 
 const ROLE = { admin: 'Admin', viewer: 'Viewer' };
@@ -61,11 +60,9 @@ export function Users() {
   };
 
   return <>
-    <TopBar />
+    <PageHeader title="Users" sub="Who can sign in, and what they can do." />
     <main>
       <div className="hero">
-        <button onClick={() => navigate('/')}><Icon k="back" size={14} /> Accounts</button>
-        <h1 style={{ marginTop: 12 }}>Users</h1>
         <p>Admins can change everything. Viewers can only see statistics — nothing else. Every card owner gets their own view-only sign-in — see the <b>Sign-in</b> button on each card.</p>
       </div>
       <div className="usr-actions">
@@ -90,7 +87,6 @@ export function Users() {
         ))}
       </div>
     </main>
-    <Footer />
   </>;
 }
 

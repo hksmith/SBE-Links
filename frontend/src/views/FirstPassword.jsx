@@ -4,9 +4,10 @@ import { useState } from 'react';
 import { send } from '../lib/api.js';
 import { useApp } from '../AppContext.js';
 import { Footer } from '../components/TopBar.jsx';
+import { SystemLogo } from '../lib/theme.jsx';
 
 export function FirstPassword() {
-  const { me } = useApp();
+  const { me, system } = useApp();
   const [next, setNext] = useState('');
   const [again, setAgain] = useState('');
   const [err, setErr] = useState('');
@@ -30,6 +31,7 @@ export function FirstPassword() {
   return <>
     <main style={{ maxWidth: 440 }}>
       <form className="first-pw" onSubmit={submit} onInput={() => setErr('')}>
+        <div className="fp-brand"><SystemLogo system={system} size={34} /><b>{system.name}</b></div>
         <h1>Welcome{me.name && me.name !== me.username ? `, ${me.name}` : ''}</h1>
         <p>You signed in with a temporary password. Choose your own password to continue — you’ll use it from now on with the username <b>{me.username}</b>.</p>
         <div className="fld"><label htmlFor="fp-new">New password</label>

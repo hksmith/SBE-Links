@@ -8,7 +8,8 @@ import { qrSvg, qrUrl, downloadPng, downloadSvg } from '../lib/qrdraw.js';
 import { Icon } from '../components/Icon.jsx';
 import { CopyButton } from '../components/CopyButton.jsx';
 import { confirmDialog } from '../components/Dialog.jsx';
-import { Footer } from '../components/TopBar.jsx';
+import { PageHeader } from '../components/TopBar.jsx';
+import { useLive } from '../lib/live.js';
 import { TYPE, TYPE_ICON, destination, editQr } from './QrCodes.jsx';
 
 const TZ = -new Date().getTimezoneOffset(); // minutes from UTC: days and hours are shown in the admin's own time
@@ -33,10 +34,7 @@ export function QrDetail({ id }) {
     setStyle(s => s || d.style);
   }, [id]);
   useEffect(() => { load().catch(() => { toast('That QR code was not found', { error: true }); navigate('/qr'); }); }, [load]);
-  useEffect(() => { // new scans show up without reloading
-    const t = setInterval(() => { if (!document.hidden) load().catch(() => {}); }, 30e3);
-    return () => clearInterval(t);
-  }, [load]);
+  const updated = useLive(load); // new scans show up by themselves
 
   // Design changes are saved on their own, a moment after the last change.
   const restyle = patch => {
@@ -48,7 +46,7 @@ export function QrDetail({ id }) {
 
   const url = q && qrUrl(q.code);
   const big = useMemo(() => (q && style ? qrSvg(url, style, { caption: caption ? q.name : '' }) : ''), [q, url, style, caption]);
-  if (!q || !style) return <header className="top"><button onClick={() => navigate('/qr')}><Icon k="back" size={14} /> QR codes</button></header>;
+  if (!q || !style) return <PageHeader title="QR code" back={['/qr', 'QR codes']} />;
 
   const s = q.stats;
   const edit = async () => { if (await editQr(q)) { toast('Saved'); load(); } };
@@ -76,11 +74,9 @@ export function QrDetail({ id }) {
   const dl = fn => fn(url, style, q.name, caption ? q.name : '').catch(() => toast('Could not make the file', { error: true }));
 
   return <>
-    <header className="top">
-      <button onClick={() => navigate('/qr')}><Icon k="back" size={14} /> QR codes</button>
-      <b className="qr-title">{q.name}</b>{!q.active && <span className="tag warn">Paused</span>}<span className="sp" />
+    <PageHeader title={q.name} sub={q.active ? `/q/${q.code}` : `/q/${q.code} · paused`} back={['/qr', 'QR codes']} live={updated}>
       <a href={url} target="_blank" rel="noopener"><button>Open <Icon k="open" size={13} /></button></a>
-    </header>
+    </PageHeader>
     <main>
       <div className="qr-ed">
         <aside className="qr-panel">
@@ -141,7 +137,6 @@ export function QrDetail({ id }) {
             <span>Last scan: <b>{s.last ? `${when(s.last)} (${ago(s.last)})` : '—'}</b></span>
             <span>Created: <b>{when(q.created)}</b></span>
             <span className="sp" />
-            <button onClick={() => load().then(() => toast('Up to date'))}>Refresh</button>
             <a href={`/api/qr/${id}/scans.xlsx?tz=${TZ}`}><button disabled={!s.scans}><Icon k="download" size={14} /> Excel</button></a>
           </div>
 
@@ -173,7 +168,6 @@ export function QrDetail({ id }) {
         </section>
       </div>
     </main>
-    <Footer />
   </>;
 }
 
@@ -184,18 +178,18 @@ function DaysChart({ days }) {
     <svg viewBox={`0 0 ${W} ${H}`} width="100%">
       {[0.5, 1].map(f => <line key={f} x1={P} x2={W - P} y1={y(mx * f)} y2={y(mx * f)} stroke="#e1e7f2" strokeDasharray="3 4" />)}
       <text x={P} y={y(mx) - 5} fontSize="10" fill="#66728c">{mx}</text>
-      {days.map((d, i) => <rect key={i} x={P + i * bw + 2} y={y(d.n)} width={bw - 4} height={H - P - y(d.n)} rx="3" fill="rgba(79,70,229,.6)"><title>{`${d.d}: ${d.n} scans, ${d.u} people (${d.nw} new)`}</title></rect>)}
-      <path d={days.map((d, i) => `${i ? 'L' : 'M'}${P + i * bw + bw / 2},${y(d.u)}`).join(' ')} fill="none" stroke="#06b6d4" strokeWidth="2.5" />
+      {days.map((d, i) => <rect key={i} x={P + i * bw + 2} y={y(d.n)} width={bw - 4} height={H - P - y(d.n)} rx="3" style={{ fill: 'rgba(var(--a-rgb),.6)' }}><title>{`${d.d}: ${d.n} scans, ${d.u} people (${d.nw} new)`}</title></rect>)}
+      <path d={days.map((d, i) => `${i ? 'L' : 'M'}${P + i * bw + bw / 2},${y(d.u)}`).join(' ')} fill="none" style={{ stroke: 'var(--b)' }} strokeWidth="2.5" />
       {days.map((d, i) => (i % 5 ? null : <text key={'t' + i} x={P + i * bw + bw / 2} y={H - 6} fill="#66728c" fontSize="10" textAnchor="middle">{d.d.slice(5)}</text>))}
     </svg>
-    <small style={{ color: 'var(--mut)' }}>■ Scans &nbsp; <span style={{ color: '#06b6d4' }}>●</span> People (unique per day)</small>
+    <small style={{ color: 'var(--mut)' }}>■ Scans &nbsp; <span style={{ color: 'var(--b)' }}>●</span> People (unique per day)</small>
   </>;
 }
 
 function Bars({ values, labels, titles }) {
   const W = 320, H = 120, P = 16, mx = Math.max(1, ...values), bw = (W - P * 2) / values.length;
   return <svg viewBox={`0 0 ${W} ${H}`} width="100%">
-    {values.map((v, i) => <rect key={i} x={P + i * bw + 1.5} y={H - P - (v / mx) * (H - P * 2)} width={bw - 3} height={(v / mx) * (H - P * 2) || 0.5} rx="2" fill={v === mx && v ? '#4f46e5' : 'rgba(79,70,229,.45)'}><title>{titles[i]}</title></rect>)}
+    {values.map((v, i) => <rect key={i} x={P + i * bw + 1.5} y={H - P - (v / mx) * (H - P * 2)} width={bw - 3} height={(v / mx) * (H - P * 2) || 0.5} rx="2" style={{ fill: v === mx && v ? 'var(--a)' : 'rgba(var(--a-rgb),.45)' }}><title>{titles[i]}</title></rect>)}
     {labels.map((l, i) => (l ? <text key={i} x={P + i * bw + bw / 2} y={H - 3} fontSize="9" fill="#66728c" textAnchor="middle">{l}</text> : null))}
   </svg>;
 }

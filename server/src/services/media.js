@@ -42,6 +42,8 @@ async function collectGarbage(graceMs = 24 * 3600e3) {
   for (const c of await companiesRepo.list()) docs.push({ ...c.page, theme: c.theme }, { ...c.template, theme: c.theme });
   for (const a of docs) for (const [obj, k] of slots(a)) { const id = idOf(obj && obj[k]); if (id) keep.add(id); }
   for (const q of await require('../repositories/qrcodes').list()) { const id = idOf(q.style && q.style.logo); if (id) keep.add(id); } // logos inside QR codes
+  const sys = await settings.get('system', {}); // system logo (Settings)
+  if (idOf(sys && sys.logo)) keep.add(idOf(sys.logo));
   const brand = await settings.get('brand', {});
   const b = idOf(brand && brand.logo);
   if (b) keep.add(b);

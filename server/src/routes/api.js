@@ -40,7 +40,7 @@ module.exports = router => {
   router.all('/api/*', async (req, res) => ((await auth.currentUser(req)) ? false : json(res, { error: 'auth' }, 401)));
 
   // Someone still on the generic first-time password may only choose a new one (plus what the app needs to load).
-  const FIRST_LOGIN_OK = new Set(['GET /api/me', 'POST /api/me/password', 'GET /api/icons', 'GET /api/brand']);
+  const FIRST_LOGIN_OK = new Set(['GET /api/me', 'POST /api/me/password', 'GET /api/icons', 'GET /api/brand', 'GET /api/system']);
   router.all('/api/*', (req, res, { url }) => (!req._user.mustChange || FIRST_LOGIN_OK.has(`${req.method === 'HEAD' ? 'GET' : req.method} ${url.pathname}`)
     ? false
     : json(res, { error: 'must_change', message: 'Please choose your own password first.' }, 403)));
@@ -89,6 +89,7 @@ module.exports = router => {
 
   router.get('/api/icons', (req, res) => json(res, ICONS, 200, { 'Cache-Control': 'max-age=3600' }));
   router.get('/api/brand', async (req, res) => json(res, await brand.get()));
+  require('./overview').forEveryone(router); // dashboard numbers, system name / logo / theme
 
   /* ---------- admins only from here on ---------- */
   router.all('/api/*', (req, res) => (auth.isAdmin(req._user) ? false : forbidden(res)));
@@ -257,6 +258,7 @@ module.exports = router => {
 
   companyRoutes.forAdmins(router);
   require('./qr').forAdmins(router); // QR codes: admins only
+  require('./overview').forAdmins(router); // Settings: system name, logo, theme
 
   router.all('/api/*', (req, res) => json(res, { error: 'nf' }, 404));
 };

@@ -53,7 +53,7 @@ sbpo-link-tree/
 | `events` | Every page view and link click (`a` account, `k` view/click, `src`, `dev`, `t`) |
 | `stats` | Running totals per account so the dashboard loads instantly |
 | `media` | Uploaded images (photos, logos, gallery, icons), referenced as `/media/<id>` |
-| `settings` | Branding (footer logo, its size, footer text) and the session-signing secret |
+| `settings` | Branding (footer logo, its size, footer text), system name / logo / colours, and the session-signing secret |
 | `users` | People who can sign in besides the main admin: role (`admin` / `viewer`), which cards a viewer can see, hashed password |
 | `qrcodes` | One document per QR code: name, short code, what it opens (link / file / text), design, running scan totals |
 | `scans` | Every QR code scan (`q` QR id, `t` time, device, system, browser/app, country, language, `nw` first scan by this visitor) |
@@ -92,6 +92,34 @@ Sign in at `http://localhost:5173/admin/login.html`. Edits in `client/src` show 
 sudo bash deploy.sh
 ```
 Installs Node.js, MongoDB 8.0 (or uses your Atlas URI), Caddy for HTTPS, a systemd service and a nightly `mongodump` backup, and builds the admin app.
+
+## The admin app
+
+A **sidebar** on the left (on phones it slides in from the ☰ button; on a computer the button at its bottom makes it narrow,
+icons only) with the screens the signed-in person may open:
+
+| Screen | What's on it |
+|---|---|
+| **Dashboard** | Today and this week for NFC taps, page views, link clicks and QR scans (with the change against the week before and a small trend line), a 7 / 14 / 30‑day activity chart, the latest activity (every tap, view, click and scan as it happens), top cards, top QR codes, companies, devices and where visits come from |
+| **Cards** | Individual cards (or all, with the company ones), with their numbers, NFC link, owner sign-in, delete |
+| **Companies** | Every company with its totals; opens the company screen |
+| **QR codes** | See *QR codes* below |
+| **Users** | Who can sign in and what they can do |
+| **Settings** | System name, logo and colours, and the footer |
+
+**Statistics refresh by themselves** every 10 seconds (dashboard, cards, companies, a company, a card's statistics and the editor's
+Analytics tab, QR codes and each QR code), and right away when you come back to the browser tab. The green **Live** badge shows when
+they were last updated.
+
+Viewers see only *Dashboard* and *Cards* (limited to their cards, no QR codes); a company admin sees *Dashboard* and *Our company*.
+
+### Settings → System
+
+- **System name** — replaces “SBPO Link Tree” in the menu, the browser tab and the sign-in page.
+- **System logo** — shown in the menu, as the browser-tab icon and on the sign-in page (the first letter of the name when there is none).
+  **Clicking the logo always opens the dashboard.**
+- **Theme colours** — eight ready-made pairs or any two colours of your own, and a **dark or light menu**. Changes are tried out on
+  the whole app straight away and only kept when you click **Save**.
 
 ## Users and permissions
 
@@ -163,7 +191,7 @@ Deleting a company deletes its page, all its cards, their statistics and sign-in
 
 ## Footer & branding
 
-On the dashboard, the **Footer & branding** card (admins) sets what appears at the bottom of every link tree page, the admin pages and the sign-in page:
+Under **Settings**, the **Footer & branding** card (admins) sets what appears at the bottom of every link tree page, the admin pages and the sign-in page:
 
 - **Footer logo**: any size or shape; it is scaled to fit. **Logo size in footer** sets its height (12–60 px).
 - **Footer text**: “Powered by Shaggar BPO Enterprise” by default. Change it to anything, or leave it empty to show only the logo.
@@ -209,7 +237,7 @@ Existing accounts (same id) are skipped, so running it twice is safe.
 | URL | |
 |---|---|
 | `/` | Redirects to `/admin` |
-| `/admin` | Admin app (login page when signed out). Screens: `#/`, `#/users`, `#/qr`, `#/qr/<id>`, `#/edit/<id>`, `#/stats/<id>` |
+| `/admin` | Admin app (login page when signed out). Screens: `#/` (dashboard), `#/cards`, `#/companies`, `#/settings`, `#/users`, `#/qr`, `#/qr/<id>`, `#/edit/<id>`, `#/stats/<id>` |
 | `/<slug>` | Public profile page, or a company page |
 | `/<company>/<slug>` | A card of a company (`/n/<company>/<slug>` for NFC) |
 | `/n/<slug>` | Same page, counted as an NFC tap (write this to the card) |
@@ -224,4 +252,4 @@ Existing accounts (same id) are skipped, so running it twice is safe.
 ```bash
 npm test
 ```
-Runs the API end to end (QR codes: permissions, uploads, scan tracking, pausing, export; login, import, create/edit/delete, tracking, logo placement, user roles and permissions, vCard serving) against an in-memory stand-in, so no MongoDB is needed.
+Runs the API end to end (dashboard overview and system settings; QR codes: permissions, uploads, scan tracking, pausing, export; login, import, create/edit/delete, tracking, logo placement, user roles and permissions, vCard serving) against an in-memory stand-in, so no MongoDB is needed.
