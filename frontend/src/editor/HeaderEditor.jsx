@@ -10,7 +10,7 @@ import { Icon } from '../components/Icon.jsx';
 import { CopyButton } from '../components/CopyButton.jsx';
 import { useState } from 'react';
 import { Dialog, showDialog } from '../components/Dialog.jsx';
-import { useEd, Text, Area, Slider, Switch, PosGrid } from './fields.jsx';
+import { useEd, Text, Area, Slider, Switch, PosGrid, Seg, Color } from './fields.jsx';
 
 const DETAILS = [['phone', 'Phone'], ['email', 'Email'], ['whatsapp', 'WhatsApp'], ['website', 'Website'], ['linkedin', 'LinkedIn'], ['address', 'Address']];
 
@@ -55,8 +55,18 @@ export function LogoControls({ label = 'company logo', hint }) {
         <Slider label="Zoom (%)" path="profile.logoZoom" min={50} max={300} value={p.logoZoom ?? 100} unit="%" />
         <Slider label="Move left / right" path="profile.logoX" min={-50} max={50} value={p.logoX ?? 0} unit="%" />
         <Slider label="Move up / down" path="profile.logoY" min={-50} max={50} value={p.logoY ?? 0} unit="%" />
-        <Switch label="White card behind the logo" path="profile.logoBg" value={p.logoBg !== false} />
-        <button onClick={() => update(d => Object.assign(d.profile, { logoSize: 30, logoH: 40, logoZoom: 100, logoX: 0, logoY: 0, logoPos: 'tr', logoBg: true }))}>Reset logo</button>
+        <h2 style={{ margin: '14px 0 8px' }}>Logo background</h2>
+        <div className="seg">
+          <button className={p.logoBg !== false ? 'on' : ''} onClick={() => update(d => { d.profile.logoBg = true; })}>Color</button>
+          <button className={p.logoBg === false ? 'on' : ''} onClick={() => update(d => { d.profile.logoBg = false; })}>Transparent (logo only)</button>
+        </div>
+        {p.logoBg !== false && <>
+          <Color label="Background color" path="profile.logoBgColor" fallback="#ffffff" />
+          <Slider label="Padding around the logo" path="profile.logoPad" min={0} max={30} value={p.logoPad ?? 7} unit="px" />
+          <Switch label="Shadow" path="profile.logoShadow" value={p.logoShadow !== false} />
+        </>}
+        <Slider label="Roundness" path="profile.logoRadius" min={0} max={60} value={p.logoRadius ?? 12} unit="px" />
+        <button onClick={() => update(d => Object.assign(d.profile, { logoSize: 30, logoH: 40, logoZoom: 100, logoX: 0, logoY: 0, logoPos: 'tr', logoBg: true, logoBgColor: '#ffffff', logoRadius: 12, logoPad: 7, logoShadow: true }))}>Reset logo</button>
       </div>
     )}
   </>;

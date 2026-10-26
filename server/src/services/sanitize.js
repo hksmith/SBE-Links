@@ -69,7 +69,7 @@ function custClean(c) {
 function newAccount(name, slug) {
   return {
     id: rid(), slug, created: Date.now(),
-    profile: { name, title: '', department: '', company: '', bio: '', photo: '', logo: '', logoSize: 30, logoH: 40, logoZoom: 100, logoX: 0, logoY: 0, logoPos: 'tr', logoBg: true },
+    profile: { name, title: '', department: '', company: '', bio: '', photo: '', logo: '', logoSize: 30, logoH: 40, logoZoom: 100, logoX: 0, logoY: 0, logoPos: 'tr', logoBg: true, logoBgColor: '#ffffff', logoRadius: 12, logoPad: 7, logoShadow: true },
     theme: { ...NEUTRAL },
     blocks: [{ id: rid(), type: 'contact', label: 'Save My Contact', url: '' }, { id: rid(), type: 'links', items: [] }],
   };
@@ -87,6 +87,8 @@ function clean(b, old) {
       logoSize: clamp(p.logoSize, 10, 90, 30), logoH: clamp(p.logoH, 15, 150, 40), logoZoom: clamp(p.logoZoom, 50, 300, 100),
       logoX: clamp(p.logoX, -50, 50, 0), logoY: clamp(p.logoY, -50, 50, 0),
       logoPos: pickOf(p.logoPos, LOGO_POS, 'tr'), logoBg: p.logoBg === undefined ? true : !!p.logoBg,
+      logoBgColor: hex(p.logoBgColor, '#ffffff'), logoRadius: clamp(p.logoRadius, 0, 60, 12), logoPad: clamp(p.logoPad, 0, 30, 7),
+      logoShadow: p.logoShadow === undefined ? true : !!p.logoShadow,
     },
     theme: {
       pageBg: hex(t.pageBg, '#ffffff'), headText: hex(t.headText, '#111111'), linkBg: hex(t.linkBg, '#111111'), linkText: hex(t.linkText, '#ffffff'), linkShadow: hex(t.linkShadow, '#111111'),

@@ -6,7 +6,7 @@
 const accounts = require('../repositories/accounts');
 const companies = require('../repositories/companies');
 
-const LOGO_KEYS = ['logo', 'logoSize', 'logoH', 'logoZoom', 'logoX', 'logoY', 'logoPos', 'logoBg'];
+const LOGO_KEYS = ['logo', 'logoSize', 'logoH', 'logoZoom', 'logoX', 'logoY', 'logoPos', 'logoBg', 'logoBgColor', 'logoRadius', 'logoPad', 'logoShadow'];
 // How the logo looks on the cards (size, crop, position) is set in the card design; the logo image itself on the company page.
 const LOGO_LOOK = LOGO_KEYS.filter(k => k !== 'logo');
 const PH = /\{\s*([a-z0-9_]+)\s*\}/gi;

@@ -165,10 +165,15 @@ test('card design: logo size & position, company page with or without its own de
   assert.strictEqual(back.theme.disp, 'Sora');
   const html = await (await req('GET', '/acme-trading/amina-hassan', null, { cookie: '' })).text();
   assert.match(html, /class="hd">.*<\/div><div class="lgbt">/, 'logo under the name and title');
-  assert.match(html, /lgc nb/, 'no white card behind the logo');
+  assert.match(html, /\.lgc\{display:inline-block;padding:0;[^}]*background:transparent/, 'transparent: only the logo');
   assert.match(html, /top right\/80% auto no-repeat/, 'background image size and position');
   assert.match(html, /rgba\(0,0,0,0\.4\)/, 'background darkened');
   assert.match(html, /family=Sora/);
+  // A colored, rounded card behind the logo.
+  Object.assign(back.profile, { logoBg: true, logoBgColor: '#ff0000', logoRadius: 30, logoShadow: false });
+  await req('PUT', `/api/companies/${co.id}/template`, back);
+  const h2 = await (await req('GET', '/acme-trading/amina-hassan', null, { cookie: '' })).text();
+  assert.match(h2, /\.lgc\{[^}]*border-radius:30px;background:#ff0000;box-shadow:none/);
   // The company page follows the company design (the first test gave it its own: switch back)...
   let page = await J('GET', `/api/companies/${co.id}/page`);
   page.ownDesign = false;

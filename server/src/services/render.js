@@ -35,6 +35,9 @@ function renderPage(a, { src = 'direct', preview = false, brand = {}, team = nul
   const ppr = circ ? '50%' : sq ? '0' : '22px', bnr = circ ? 60 : sq ? 0 : 24;
   const [bp, bfs] = BTN[t.btnSize] || BTN.m, gap = t.gap ?? 12, HL = t.headAlign === 'left', IR = t.iconPos === 'right';
   const lpos = p.logoPos || 'tr';
+  // The card behind the logo: color (or transparent), roundness, padding, shadow.
+  const lbg = p.logoBg === false ? 'transparent' : p.logoBgColor || '#ffffff', lrad = p.logoRadius ?? 12, lpad = p.logoPad ?? 7;
+  const lsh = p.logoShadow === false || p.logoBg === false ? 'none' : '0 4px 16px rgba(0,0,0,.14)';
   const lkbg = `color-mix(in srgb,${t.linkBg} ${100 - t.alpha}%,transparent)`, bd = `2px solid ${t.outline ? t.linkShadow : 'transparent'}`, sh = t.shadow ? '0 8px 22px rgba(0,0,0,.28)' : 'none';
   // With a full-width photo (banner / portrait) the logo floats over the photo; otherwise it gets its own row so nothing overlaps.
   const overlay = !!p.photo && (t.layout === 'banner' || t.layout === 'portrait');
@@ -50,7 +53,7 @@ function renderPage(a, { src = 'direct', preview = false, brand = {}, team = nul
 h1{font-family:${fam(t.disp)};font-size:${hs}px;margin:10px 0 4px;line-height:1.15}${HL ? 'h1,.hd,.bio{text-align:left}' : ''}.hd{margin:0 0 14px}.ti{opacity:.85;margin:0 0 4px}.dp{opacity:.8;margin:0 0 4px}.co{font-weight:700;font-size:18px;margin:8px 0 0}
 .lgbar{display:flex;justify-content:${JUST[lpos[1]] || 'flex-end'};padding:14px 14px 0}.lgo{position:absolute;top:14px;left:14px;right:14px;z-index:3;display:flex;justify-content:${JUST[lpos[1]] || 'flex-end'};pointer-events:none}.lgo .lgc{pointer-events:auto}
 .lgu{display:flex;justify-content:center;margin:0 0 12px}.lgbt{display:flex;justify-content:${JUST[lpos[1]] || 'center'};margin:4px 0 16px}
-.lgc{display:inline-block;padding:6px 8px;border-radius:12px;background:rgba(255,255,255,.94);box-shadow:0 4px 16px rgba(0,0,0,.14);line-height:0}.lgc.nb{padding:0;background:none;box-shadow:none}
+.lgc{display:inline-block;padding:${p.logoBg === false ? 0 : `${Math.round(lpad * 0.85)}px ${lpad + 1}px`};border-radius:${lrad}px;background:${lbg};box-shadow:${lsh};line-height:0;overflow:hidden}.lgw{border-radius:${p.logoBg === false ? lrad : Math.max(0, lrad - lpad)}px}
 .lgw{width:min(${(LG.s * 4.8).toFixed(1)}px,${LG.s}vw);aspect-ratio:100/${LG.h};overflow:hidden}.lgw img{display:block;width:100%;height:100%;object-fit:contain;transform:translate(${LG.x}%,${LG.y}%) scale(${LG.z / 100})}
 .pw{margin-top:30px;font-size:12px;opacity:.75;letter-spacing:.03em;display:flex;align-items:center;justify-content:center;gap:8px}.pw img{width:auto;object-fit:contain}.bio{margin:0 0 18px;opacity:.85;white-space:pre-line}
 .lk{display:flex;align-items:center;gap:10px;padding:${bp}px 18px;margin:0 0 ${gap}px;border-radius:${t.radius}px;background:${lkbg};color:${t.linkText};text-decoration:none;font-weight:700;font-size:${bfs}px;${IR ? 'flex-direction:row-reverse;' : ''}border:${bd};box-shadow:${sh};${t.alpha > 0 ? 'backdrop-filter:blur(8px);' : ''}transition:transform .15s}
@@ -65,7 +68,7 @@ hr{border:0;border-top:1px solid currentColor;opacity:.25;margin:16px 0}
 .tmh{font-family:${fam(t.disp)};font-size:20px;margin:26px 0 12px}.tm .i{width:40px;height:40px;border-radius:50%;overflow:hidden;background:rgba(127,127,127,.25);font-size:17px}.tm .i img{width:40px;height:40px;border-radius:50%}${TXCSS}</style></head><body><div class="pg">`;
 
   if (a.isCompany) return h + companyHeader(a, team, src, T) + footer(a, brandText, brandLogo, brandSize);
-  const logo = p.logo ? `<div class="lgc${p.logoBg === false ? ' nb' : ''}"><div class="lgw"><img alt="${esc(p.company || 'Company logo')}" src="${esc(p.logo)}"></div></div>` : '';
+  const logo = p.logo ? `<div class="lgc"><div class="lgw"><img alt="${esc(p.company || 'Company logo')}" src="${esc(p.logo)}"></div></div>` : '';
   const top = logo && lpos[0] === 't', under = logo && lpos === 'under', bottom = logo && lpos[0] === 'b';
   if (top) h += overlay ? `<div class="lgo">${logo}</div>` : `<div class="lgbar">${logo}</div>`;
   if (p.photo) h += t.layout === 'banner' ? `<img class="bn" alt="" src="${esc(p.photo)}">` : t.layout === 'portrait' ? `<div class="pt"><img alt="" src="${esc(p.photo)}"></div>` : `<img class="pp" alt="" src="${esc(p.photo)}">`;
