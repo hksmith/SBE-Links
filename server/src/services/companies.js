@@ -11,7 +11,7 @@ const xlsx = require('./xlsx');
 const { NEUTRAL, FIELDS, rid, S, slugify, validSlug, newAccount, cleanFields, fieldKey } = require('./sanitize');
 
 const clone = o => JSON.parse(JSON.stringify(o));
-const LOGO = { logo: '', logoSize: 30, logoH: 40, logoZoom: 100, logoX: 0, logoY: 0 };
+const LOGO = { logo: '', logoSize: 30, logoH: 40, logoZoom: 100, logoX: 0, logoY: 0, logoPos: 'tr', logoBg: true };
 const item = (ico, title, url) => ({ id: rid(), ico, icon: '', img: '', title, sub: '', url, off: false });
 
 // The company page and card template a new company starts with.

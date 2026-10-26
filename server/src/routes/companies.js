@@ -101,7 +101,9 @@ function forAdmins(router) {
     const a = clean(b, { id: c.id, slug: c.slug, created: c.created });
     await media.ingestAccount(a);
     if (a.slug !== c.slug && !(await pages.topSlugFree(a.slug, c.id))) a.slug = c.slug;
-    Object.assign(c, { slug: a.slug, name: a.profile.name.trim() || c.name, theme: a.theme, showTeam: b.showTeam !== false });
+    // The company page uses the company design (edited in Card design) unless it has its own.
+    Object.assign(c, { slug: a.slug, name: a.profile.name.trim() || c.name, showTeam: b.showTeam !== false, pageOwnDesign: !!b.ownDesign });
+    if (b.ownDesign) c.pageTheme = a.theme;
     c.page = { profile: { ...a.profile, photo: '' }, fields: a.fields, blocks: a.blocks };
     try {
       await companiesRepo.replace(c);
@@ -127,7 +129,10 @@ function forAdmins(router) {
     if (!b) return json(res, { error: 'bad' }, 400);
     const a = clean(b, { id: c.id, slug: '', created: c.created });
     await media.ingestAccount(a);
-    for (const k of pages.LOGO_KEYS) delete a.profile[k]; // the logo is set on the company page
+    // The logo image is the company's (shared with the company page); its size, crop and position on the cards live here.
+    const logo = a.profile.logo;
+    delete a.profile.logo;
+    if (logo !== (c.page.profile.logo || '')) c.page.profile.logo = logo;
     c.theme = a.theme;
     c.template = { profile: a.profile, fields: a.fields, blocks: a.blocks };
     await companiesRepo.replace(c);

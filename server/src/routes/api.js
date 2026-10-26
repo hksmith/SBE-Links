@@ -254,7 +254,7 @@ module.exports = router => {
     const opts = { src: 'preview', preview: true, brand: await brand.get() };
     const c = b.kind === 'page' || b.kind === 'template' ? await companiesRepo.get(b.id) : b.company ? await companiesRepo.get(b.company) : null;
     if (b.kind === 'page' && c) {
-      const draft = { ...c, theme: a.theme, showTeam: b.showTeam !== false, page: { profile: a.profile, fields: a.fields, blocks: a.blocks } };
+      const draft = { ...c, pageOwnDesign: !!b.ownDesign, pageTheme: a.theme, showTeam: b.showTeam !== false, page: { profile: a.profile, fields: a.fields, blocks: a.blocks } };
       const team = draft.showTeam ? (await accounts.listByCompany(c.id)).map(m => ({ name: m.profile.name, title: m.profile.title, photo: m.profile.photo, href: `/${c.slug}/${m.slug}` })) : null;
       return html(res, renderPage(pages.companyForDisplay(draft), { ...opts, team }));
     }

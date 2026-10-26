@@ -4,11 +4,13 @@
 //   company page      company name, tagline, about, logo (used on every card), company details, page address
 //   card design       sample person for the preview, defaults for new cards, sample details
 import { O } from '../lib/utils.js';
+import { navigate } from '../lib/router.js';
+import { LOGO_POS } from '../lib/constants.js';
 import { Icon } from '../components/Icon.jsx';
 import { CopyButton } from '../components/CopyButton.jsx';
 import { useState } from 'react';
 import { Dialog, showDialog } from '../components/Dialog.jsx';
-import { useEd, Text, Area, Slider } from './fields.jsx';
+import { useEd, Text, Area, Slider, Switch, PosGrid } from './fields.jsx';
 
 const DETAILS = [['phone', 'Phone'], ['email', 'Email'], ['whatsapp', 'WhatsApp'], ['website', 'Website'], ['linkedin', 'LinkedIn'], ['address', 'Address']];
 
@@ -31,8 +33,9 @@ function Photo({ label = 'photo' }) {
   );
 }
 
-// Logo upload with size & crop (individual cards and the company page).
-function LogoControls({ label, hint }) {
+// The logo: upload, and how it shows on the card (size, crop, position, background).
+// Used by individual cards (Link in Bio tab) and by the company card design (Design tab).
+export function LogoControls({ label = 'company logo', hint }) {
   const { cur, update, upload } = useEd();
   const p = cur.profile;
   return <>
@@ -41,18 +44,36 @@ function LogoControls({ label, hint }) {
       <button onClick={() => upload('logo')}><Icon k="upload" size={14} /> {p.logo ? 'Change' : 'Upload'} {label}</button>
       {p.logo && <button onClick={() => update(d => { d.profile.logo = ''; })}>Remove</button>}
     </div>
-    <small className="hint">{hint}</small>
+    {hint && <small className="hint">{hint}</small>}
     {p.logo && (
       <div className="lgc">
-        <h2 style={{ margin: '10px 0 0' }}>Logo size &amp; crop {cur.kind === 'page' && <small style={{ fontWeight: 400, color: 'var(--mut)' }}>(the corner logo on the cards)</small>}</h2>
-        <Slider label="Size (% of page width)" path="profile.logoSize" min={10} max={45} value={Math.min(p.logoSize ?? 30, 45)} unit="%" />
+        <h2 style={{ margin: '10px 0 8px' }}>Position on the card</h2>
+        <PosGrid path="profile.logoPos" options={LOGO_POS} fallback="tr" />
+        <h2 style={{ margin: '14px 0 0' }}>Size &amp; crop</h2>
+        <Slider label="Size (% of page width)" path="profile.logoSize" min={10} max={90} value={Math.min(p.logoSize ?? 30, 90)} unit="%" />
         <Slider label="Crop height (%)" path="profile.logoH" min={15} max={150} value={p.logoH ?? 40} unit="%" />
         <Slider label="Zoom (%)" path="profile.logoZoom" min={50} max={300} value={p.logoZoom ?? 100} unit="%" />
         <Slider label="Move left / right" path="profile.logoX" min={-50} max={50} value={p.logoX ?? 0} unit="%" />
         <Slider label="Move up / down" path="profile.logoY" min={-50} max={50} value={p.logoY ?? 0} unit="%" />
-        <button onClick={() => update(d => Object.assign(d.profile, { logoSize: 30, logoZoom: 100, logoX: 0, logoY: 0 }))}>Reset logo</button>
+        <Switch label="White card behind the logo" path="profile.logoBg" value={p.logoBg !== false} />
+        <button onClick={() => update(d => Object.assign(d.profile, { logoSize: 30, logoH: 40, logoZoom: 100, logoX: 0, logoY: 0, logoPos: 'tr', logoBg: true }))}>Reset logo</button>
       </div>
     )}
+  </>;
+}
+
+// The company page: only the logo image. How it shows on people's cards is set in the card design.
+function PageLogo() {
+  const { cur, update, upload } = useEd();
+  const p = cur.profile, co = cur.companyInfo;
+  return <>
+    <div className="row" style={{ marginBottom: 4 }}>
+      {p.logo && <img className="th" src={p.logo} alt="" style={{ objectFit: 'contain', background: '#fff' }} />}
+      <button onClick={() => upload('logo')}><Icon k="upload" size={14} /> {p.logo ? 'Change' : 'Upload'} company logo</button>
+      {p.logo && <button onClick={() => update(d => { d.profile.logo = ''; })}>Remove</button>}
+    </div>
+    <small className="hint">Shown large in the center of this page (its size follows “Profile picture size” in Design), and on every card of the company.</small>
+    {co && <button style={{ margin: '4px 0 12px' }} onClick={() => navigate(`/ctpl/${co.id}`)}><Icon k="card" size={14} /> Size &amp; position of the logo on the cards</button>}
   </>;
 }
 
@@ -63,7 +84,7 @@ function LockedLogo() {
   return (
     <div className="locked">
       {p.logo ? <img className="th" src={p.logo} alt="" style={{ objectFit: 'contain', background: '#fff' }} /> : <span className="chip"><Icon k="building" /></span>}
-      <span><b>{co ? co.name : 'Company'} logo</b><small>{p.logo ? 'Set by the company — the same on every card of the company.' : 'No logo yet: add it on the company page.'} Change it on the company page.</small></span>
+      <span><b>{co ? co.name : 'Company'} logo</b><small>{p.logo ? 'Set by the company — the same on every card of the company.' : 'No logo yet.'} Change it, its size and its position in the company’s Card design.</small></span>
     </div>
   );
 }
@@ -119,7 +140,7 @@ function CardHeader() {
       <DetailsEditor title="Contact details" hint="Used by the links of the company design ({phone}, {email}, …) and by the automatic “Save contact” card. Leave a detail empty to hide its button." />
       <Address prefix={`/${co.slug}/`} />
     </> : <>
-      <LogoControls label="company logo" hint="The company logo shows in the top-right corner of the page." />
+      <LogoControls label="company logo" hint="Shows in the top-right corner by default. Pick another position below." />
       <Address />
     </>}
   </>;
@@ -131,7 +152,7 @@ function CompanyPageHeader() {
     <Text path="profile.name" placeholder="Company name" />
     <Text path="profile.title" placeholder="Tagline (e.g. Trading since 1990)" />
     <Area path="profile.bio" placeholder="About the company" />
-    <LogoControls label="company logo" hint="Shown large in the center of this page, and in the corner of every card of the company. People’s cards can’t change it." />
+    <PageLogo />
     <DetailsEditor title="Company details" hint="Used by the links below ({website}, {phone}, {email}, {address}). A link whose detail is empty is hidden." />
     <label className="sw"><span>List the team on the company page</span><input type="checkbox" checked={cur.showTeam !== false} onChange={e => update(d => { d.showTeam = e.target.checked; })} /><i /></label>
     <Address />
@@ -153,7 +174,7 @@ function TemplateHeader() {
     <Text path="profile.department" placeholder="Department" />
     <Text path="profile.company" placeholder="Company name shown on the cards" />
     <Area path="profile.bio" placeholder="Short bio" />
-    <LockedLogo />
+    <small className="hint">The company logo, its size and its position on the cards: see the <b>Design</b> tab.</small>
     <DetailsEditor title="Sample details (only for this preview)" hint="Every card uses its own. Available in links as {phone}, {email}, {whatsapp}, {website}, {linkedin}, {address}, or any extra column of your Excel sheet." />
   </>;
 }

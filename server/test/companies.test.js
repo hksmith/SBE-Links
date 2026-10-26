@@ -61,6 +61,7 @@ test('create a company: company page, company admin sign-in, address rules', asy
   page.profile.bio = 'We trade things.';
   page.profile.logo = PNG;
   page.fields = { website: 'acme.example', phone: '+251 111 22 33', address: '' };
+  page.ownDesign = true; // the company page gets its own design
   page.theme.pageBg = '#123456';
   r = await req('PUT', `/api/companies/${co.id}/page`, page);
   assert.strictEqual(r.status, 200);
@@ -146,6 +147,52 @@ test('cards under the company follow the company design and logo', async () => {
   html = await (await req('GET', '/acme-trading', null, { cookie: '' })).text();
   assert.match(html, /Our team/);
   assert.match(html, /href="\/acme-trading\/amina-hassan\?s=company"/);
+});
+
+test('card design: logo size & position, company page with or without its own design, custom choices', async () => {
+  // The logo's look on the cards is set in the card design; the company page keeps the logo image.
+  const tpl = await J('GET', `/api/companies/${co.id}/template`);
+  Object.assign(tpl.profile, { logoPos: 'bc', logoSize: 60, logoBg: false });
+  tpl.theme = { ...tpl.theme, picShape: 'square', bgType: 'image', bgImage: PNG, bgSize: 'zoom', bgZoom: 80, bgPos: 'top right', bgDim: 40, gap: 20, btnSize: 'l', disp: 'Sora',
+    mode: { colors: 'Custom', fonts: 'Custom' }, cust: { colors: { linkBg: '#abcdef' }, fonts: { disp: 'Sora', body: 'Nope' } } };
+  assert.strictEqual((await req('PUT', `/api/companies/${co.id}/template`, tpl)).status, 200);
+  const back = await J('GET', `/api/companies/${co.id}/template`);
+  assert.strictEqual(back.profile.logoPos, 'bc');
+  assert.strictEqual(back.profile.logoSize, 60);
+  assert.ok(back.profile.logo.startsWith('/media/'), 'the company logo is still there');
+  assert.deepStrictEqual(back.theme.mode, { colors: 'Custom', fonts: 'Custom' });
+  assert.deepStrictEqual(back.theme.cust.fonts, { disp: 'Sora', body: 'Inter' }, 'unknown fonts are replaced');
+  assert.strictEqual(back.theme.disp, 'Sora');
+  const html = await (await req('GET', '/acme-trading/amina-hassan', null, { cookie: '' })).text();
+  assert.match(html, /class="hd">.*<\/div><div class="lgbt">/, 'logo under the name and title');
+  assert.match(html, /lgc nb/, 'no white card behind the logo');
+  assert.match(html, /top right\/80% auto no-repeat/, 'background image size and position');
+  assert.match(html, /rgba\(0,0,0,0\.4\)/, 'background darkened');
+  assert.match(html, /family=Sora/);
+  // The company page follows the company design (the first test gave it its own: switch back)...
+  let page = await J('GET', `/api/companies/${co.id}/page`);
+  page.ownDesign = false;
+  await req('PUT', `/api/companies/${co.id}/page`, page);
+  page = await J('GET', `/api/companies/${co.id}/page`);
+  assert.strictEqual(page.ownDesign, false);
+  assert.strictEqual(page.theme.disp, 'Sora');
+  // ...its own changes don't touch the card design while it follows it...
+  page.theme.linkBg = '#010203';
+  await req('PUT', `/api/companies/${co.id}/page`, page);
+  assert.notStrictEqual((await J('GET', `/api/companies/${co.id}/template`)).theme.linkBg, '#010203');
+  // ...until it gets its own design.
+  page.ownDesign = true;
+  page.theme.picShape = 'circle';
+  await req('PUT', `/api/companies/${co.id}/page`, page);
+  page = await J('GET', `/api/companies/${co.id}/page`);
+  assert.strictEqual(page.ownDesign, true);
+  assert.strictEqual(page.theme.linkBg, '#010203');
+  assert.notStrictEqual((await J('GET', `/api/companies/${co.id}/template`)).theme.linkBg, '#010203', 'the cards keep the company design');
+  assert.match(await (await req('GET', '/acme-trading', null, { cookie: '' })).text(), /class="clg ci"/, 'circular logo on the company page');
+  // Changing the logo in the card design changes the company logo.
+  back.profile.logo = '';
+  await req('PUT', `/api/companies/${co.id}/template`, back);
+  assert.strictEqual((await J('GET', `/api/companies/${co.id}/page`)).profile.logo, '');
 });
 
 test('Excel: template, import, sign-ins file', async () => {

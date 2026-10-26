@@ -28,7 +28,6 @@ export function Editor({ id, kind = 'account' }) {
   const [tab, setTab] = useState('bio');
   const [open, setOpen] = useState(kind === 'account' ? null : 'hdr'); // expanded block id ('hdr' = header)
   const [thTab, setThTab] = useState('Classic');
-  const [bsTab, setBsTab] = useState('Popular');
 
   const co = cur && cur.companyInfo;
   const home = kind !== 'account' || (cur && cur.company) ? `/company/${co ? co.id : id}` : '/cards';
@@ -78,7 +77,7 @@ export function Editor({ id, kind = 'account' }) {
             </div>
             <div>
               {tab === 'bio' && <BioTab open={open} setOpen={setOpen} />}
-              {tab === 'design' && <DesignTab thTab={thTab} setThTab={setThTab} bsTab={bsTab} setBsTab={setBsTab} />}
+              {tab === 'design' && <DesignTab thTab={thTab} setThTab={setThTab} />}
               {tab === 'stats' && <>
                 <Analytics account={cur} stats={stats} />
                 <div className="reset-row">

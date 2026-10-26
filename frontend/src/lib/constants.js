@@ -6,8 +6,17 @@ export const PRE = {
   Bold: { pageBg: '#111111', headText: '#ffffff', linkBg: '#facc15', linkText: '#111111', linkShadow: '#facc15', blockBg: '#222222', blockText: '#ffffff' },
   Playful: { pageBg: '#fde7f3', headText: '#4a1d96', linkBg: '#8b5cf6', linkText: '#ffffff', linkShadow: '#f9a8d4', blockBg: '#ffffff', blockText: '#4a1d96' },
 };
-export const FONTS = ['Inter', 'Poppins', 'DM Sans', 'Montserrat', 'Playfair Display', 'Lora', 'Libre Baskerville', 'Linden Hill', 'Merriweather', 'Space Grotesk', 'Space Mono', 'Orbitron', 'Bebas Neue', 'Pacifico'];
-export const FP = { Modern: ['Inter', 'Inter'], Classic: ['Playfair Display', 'Lora'], Creative: ['Pacifico', 'Poppins'], Logo: ['Bebas Neue', 'Montserrat'], Futuristic: ['Orbitron', 'Space Grotesk'] };
+// Keep in step with FONTS in server/src/services/sanitize.js.
+export const FONTS = ['Inter', 'Sora', 'Poppins', 'DM Sans', 'Montserrat', 'Outfit', 'Manrope', 'Plus Jakarta Sans', 'Urbanist', 'Raleway', 'Nunito', 'Roboto', 'Open Sans', 'Lato', 'Work Sans', 'Rubik', 'Oswald',
+  'Playfair Display', 'Lora', 'Libre Baskerville', 'Cormorant Garamond', 'Linden Hill', 'Merriweather', 'Space Grotesk', 'Space Mono', 'Orbitron', 'Bebas Neue', 'Pacifico', 'Dancing Script', 'Great Vibes',
+  'Noto Sans Ethiopic', 'Noto Serif Ethiopic', 'Abyssinica SIL'];
+export const FP = { Modern: ['Inter', 'Inter'], Sleek: ['Sora', 'Sora'], Classic: ['Playfair Display', 'Lora'], Creative: ['Pacifico', 'Poppins'], Logo: ['Bebas Neue', 'Montserrat'], Futuristic: ['Orbitron', 'Space Grotesk'] };
+// Keys each preset tab controls (Colors, Fonts, Block style). What the person set under “Custom” is kept in theme.cust.
+export const COLOR_KEYS = ['pageBg', 'headText', 'linkBg', 'linkText', 'linkShadow', 'blockBg', 'blockText'];
+export const GROUP_KEYS = { colors: COLOR_KEYS, fonts: ['disp', 'body'], block: ['radius', 'alpha', 'shadow', 'outline'] };
+// Where the company logo can go on a card.
+export const LOGO_POS = [['tl', 'Top left'], ['tc', 'Top center'], ['tr', 'Top right'], ['', ''], ['under', 'Between photo and name'], ['', ''], ['bl', 'Below the name, left'], ['bc', 'Below the name, center'], ['br', 'Below the name, right']];
+export const BG_POS = [['top left', 'Top left'], ['top', 'Top'], ['top right', 'Top right'], ['left', 'Left'], ['center', 'Center'], ['right', 'Right'], ['bottom left', 'Bottom left'], ['bottom', 'Bottom'], ['bottom right', 'Bottom right']];
 export const BS = {
   Classic: { radius: 12, alpha: 0, shadow: false, outline: true },
   Pill: { radius: 40, alpha: 0, shadow: false, outline: true },

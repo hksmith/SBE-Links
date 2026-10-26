@@ -6,15 +6,17 @@
 const accounts = require('../repositories/accounts');
 const companies = require('../repositories/companies');
 
-const LOGO_KEYS = ['logo', 'logoSize', 'logoH', 'logoZoom', 'logoX', 'logoY'];
+const LOGO_KEYS = ['logo', 'logoSize', 'logoH', 'logoZoom', 'logoX', 'logoY', 'logoPos', 'logoBg'];
+// How the logo looks on the cards (size, crop, position) is set in the card design; the logo image itself on the company page.
+const LOGO_LOOK = LOGO_KEYS.filter(k => k !== 'logo');
 const PH = /\{\s*([a-z0-9_]+)\s*\}/gi;
 
 // The company's design and logo applied to a card (or to the company's card template).
 function inherit(a, company) {
   if (!company) return a;
-  const lp = company.page.profile;
-  const profile = { ...a.profile };
-  for (const k of LOGO_KEYS) profile[k] = lp[k];
+  const lp = company.page.profile, tp = (company.template && company.template.profile) || {};
+  const profile = { ...a.profile, logo: lp.logo };
+  for (const k of LOGO_LOOK) profile[k] = tp[k] ?? lp[k]; // older companies kept these on the company page
   if (!profile.company) profile.company = company.name;
   return { ...a, theme: a.ownDesign ? a.theme : company.theme, profile };
 }
@@ -75,10 +77,11 @@ const forDisplay = (a, company) => {
 };
 
 // The company page as an account-shaped document, so the same page renderer is used.
+// It uses the company design (shared with the cards) unless it was given its own (pageOwnDesign).
 const companyDoc = c => ({
-  id: c.id, slug: c.slug, created: c.created, company: null, isCompany: true,
+  id: c.id, slug: c.slug, created: c.created, company: null, isCompany: true, ownDesign: !!(c.pageOwnDesign && c.pageTheme),
   profile: { ...c.page.profile, name: c.page.profile.name || c.name, photo: '' },
-  fields: c.page.fields || {}, theme: c.theme, blocks: c.page.blocks,
+  fields: c.page.fields || {}, theme: c.pageOwnDesign && c.pageTheme ? c.pageTheme : c.theme, blocks: c.page.blocks,
 });
 const companyForDisplay = c => {
   const d = companyDoc(c);
@@ -109,4 +112,4 @@ async function topSlugFree(slug, except) {
   return !(await accounts.slugTaken(slug, except)) && !(await companies.slugTaken(slug, except));
 }
 
-module.exports = { inherit, resolveBlocks, fill, varsOf, forDisplay, companyDoc, companyForDisplay, pathOf, pathFor, byId, topSlugFree, LOGO_KEYS };
+module.exports = { inherit, resolveBlocks, fill, varsOf, forDisplay, companyDoc, companyForDisplay, pathOf, pathFor, byId, topSlugFree, LOGO_KEYS, LOGO_LOOK };
